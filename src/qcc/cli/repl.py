@@ -25,6 +25,7 @@ class QCCRepl:
             "statevector": self.cmd_statevector,
             "probs": self.cmd_probs,
             "bloch": self.cmd_bloch,
+            "run": self.cmd_run,
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
             "help": self.cmd_help,
@@ -36,7 +37,7 @@ class QCCRepl:
             history=FileHistory(os.path.expanduser("~/.qcc_history")),
             auto_suggest=AutoSuggestFromHistory(),
         )
-        print("Quantum Circuit Composer v0.1.0 (Phase 5)")
+        print("Quantum Circuit Composer v0.1.0 (Phase 6)")
         print("Type 'help' for commands. Type 'exit' to quit.")
 
         while True:
@@ -201,7 +202,6 @@ class QCCRepl:
     def cmd_bloch(self, args):
         from ..visualizers.bloch import BlochVisualizer
         try:
-            # Ensure num_qubits is set from the circuit
             if self.session.circuit.num_qubits == 0:
                 max_q = -1
                 for op in self.session.circuit.operations:
@@ -211,13 +211,97 @@ class QCCRepl:
                     self.session.circuit.num_qubits = max_q + 1
                 else:
                     self.session.circuit.num_qubits = 1
-            # Compute statevector using BlochVisualizer
             state = BlochVisualizer.compute_statevector(self.session.circuit)
             vectors = BlochVisualizer.compute_bloch_vectors(state)
             filename = args[0] if args else "bloch.png"
             BlochVisualizer.plot(vectors, save_path=filename)
         except Exception as e:
             print(f"❌ {e}")
+
+    def cmd_run(self, args):
+        from qiskit import QuantumCircuit, transpile
+        from qiskit_aer import AerSimulator
+        from qiskit.visualization import plot_histogram
+        import matplotlib.pyplot as plt
+        import os
+
+        shots = 1024
+        backend_name = "aer_simulator"
+
+        if args:
+            if args[0].isdigit():
+                shots = int(args[0])
+            else:
+                backend_name = args[0]
+                if len(args) > 1 and args[1].isdigit():
+                    shots = int(args[1])
+
+        try:
+            num_qubits = self.session.circuit.num_qubits
+            if num_qubits == 0:
+                max_q = -1
+                for op in self.session.circuit.operations:
+                    if op.qubits:
+                        max_q = max(max_q, max(op.qubits))
+                if max_q >= 0:
+                    num_qubits = max_q + 1
+                else:
+                    num_qubits = 1
+
+            qc = QuantumCircuit(num_qubits)
+
+            for gate in self.session.circuit.operations:
+                if gate.type.name == 'H':
+                    qc.h(gate.qubits[0])
+                elif gate.type.name == 'CX':
+                    qc.cx(gate.qubits[0], gate.qubits[1])
+                elif gate.type.name == 'X':
+                    qc.x(gate.qubits[0])
+                elif gate.type.name == 'Y':
+                    qc.y(gate.qubits[0])
+                elif gate.type.name == 'Z':
+                    qc.z(gate.qubits[0])
+                elif gate.type.name == 'MEASURE':
+                    q = gate.qubits[0]
+                    c = gate.classical_bits[0] if gate.classical_bits else q
+                    qc.measure(q, c)
+                elif gate.type.name == 'SWAP':
+                    qc.swap(gate.qubits[0], gate.qubits[1])
+                elif gate.type.name == 'PHASE' and gate.params:
+                    qc.p(gate.params[0], gate.qubits[0])
+
+            has_measure = any(g.type.name == 'MEASURE' for g in self.session.circuit.operations)
+            if not has_measure:
+                qc.measure_all()
+
+            simulator = AerSimulator()
+            transpiled = transpile(qc, simulator)
+            result = simulator.run(transpiled, shots=shots).result()
+            counts = result.get_counts()
+
+            print(f"\n📊 Measurement Results ({shots} shots):")
+            print("─" * 40)
+
+            sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+            max_count = max(counts.values()) if counts else 1
+
+            for bitstring, count in sorted_counts:
+                bar_len = int((count / max_count) * 30)
+                bar = '█' * bar_len + '░' * (30 - bar_len)
+                percentage = (count / shots) * 100
+                print(f"  {bitstring}: {bar} {count:>4} ({percentage:>5.1f}%)")
+
+            print("─" * 40)
+
+            if len(counts) <= 16:
+                fig = plot_histogram(counts)
+                hist_path = "histogram.png"
+                fig.savefig(hist_path, bbox_inches='tight', dpi=150)
+                print(f"📈 Histogram saved to: {os.path.abspath(hist_path)}")
+                plt.close(fig)
+
+        except Exception as e:
+            print(f"❌ Execution failed: {e}")
 
     def cmd_exit(self, args):
         print("Goodbye!")
@@ -241,6 +325,7 @@ Available commands:
   statevector       – Display the statevector
   probs             – Display probability distribution (ASCII bar chart)
   bloch [filename]  – Generate Bloch sphere (saves to filename or bloch.png)
+  run [shots]       – Execute the circuit on Qiskit Aer simulator
   exit / quit       – Exit the REPL
   help              – Show this help
 """
