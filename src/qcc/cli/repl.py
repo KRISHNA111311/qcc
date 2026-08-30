@@ -37,7 +37,7 @@ class QCCRepl:
             history=FileHistory(os.path.expanduser("~/.qcc_history")),
             auto_suggest=AutoSuggestFromHistory(),
         )
-        print("Quantum Circuit Composer v0.1.0 (Phase 6)")
+        print("Quantum Circuit Composer v0.1.0 (Phase 7)")
         print("Type 'help' for commands. Type 'exit' to quit.")
 
         while True:
@@ -156,6 +156,9 @@ class QCCRepl:
             self.session.circuit = QASMDParser.parse(args[0])
             self.session.commit()
             print("✅ Circuit imported from QASM-D")
+            if args[0].endswith('00'):
+                print("Auto-executing...")
+                self.cmd_run([])
         except Exception as e:
             print(f"❌ {e}")
 
@@ -255,20 +258,35 @@ class QCCRepl:
                     qc.h(gate.qubits[0])
                 elif gate.type.name == 'CX':
                     qc.cx(gate.qubits[0], gate.qubits[1])
+                elif gate.type.name == 'CZ':
+                    qc.cz(gate.qubits[0], gate.qubits[1])
+                elif gate.type.name == 'SWAP':
+                    qc.swap(gate.qubits[0], gate.qubits[1])
                 elif gate.type.name == 'X':
                     qc.x(gate.qubits[0])
                 elif gate.type.name == 'Y':
                     qc.y(gate.qubits[0])
                 elif gate.type.name == 'Z':
                     qc.z(gate.qubits[0])
+                elif gate.type.name == 'U':
+                    if len(gate.params) >= 3:
+                        qc.u(gate.params[0], gate.params[1], gate.params[2], gate.qubits[0])
+                elif gate.type.name == 'RX':
+                    if gate.params:
+                        qc.rx(gate.params[0], gate.qubits[0])
+                elif gate.type.name == 'RY':
+                    if gate.params:
+                        qc.ry(gate.params[0], gate.qubits[0])
+                elif gate.type.name == 'RZ':
+                    if gate.params:
+                        qc.rz(gate.params[0], gate.qubits[0])
+                elif gate.type.name == 'PHASE':
+                    if gate.params:
+                        qc.p(gate.params[0], gate.qubits[0])
                 elif gate.type.name == 'MEASURE':
                     q = gate.qubits[0]
                     c = gate.classical_bits[0] if gate.classical_bits else q
                     qc.measure(q, c)
-                elif gate.type.name == 'SWAP':
-                    qc.swap(gate.qubits[0], gate.qubits[1])
-                elif gate.type.name == 'PHASE' and gate.params:
-                    qc.p(gate.params[0], gate.qubits[0])
 
             has_measure = any(g.type.name == 'MEASURE' for g in self.session.circuit.operations)
             if not has_measure:
@@ -318,7 +336,7 @@ Available commands:
   draw              – Draw circuit in ASCII
   save <file.json>  – Save circuit to JSON file
   load <file.json>  – Load circuit from JSON file
-  import-d <str>    – Import circuit from QASM-D string
+  import-d <str>    – Import circuit from QASM-D string (auto-run if ends with 00)
   export-d          – Export circuit as QASM-D string
   qiskit            – Generate Qiskit Python code
   qasm              – Generate OpenQASM 3.0 code

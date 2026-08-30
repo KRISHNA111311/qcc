@@ -1,21 +1,59 @@
 ﻿import numpy as np
-from ..core.models import CircuitAST
+from ..core.models import CircuitAST, GateType
+from qiskit import QuantumCircuit
+from qiskit_aer import AerSimulator
 
 class StatevectorVisualizer:
     @staticmethod
-    def compute(circuit: CircuitAST) -> np.ndarray:
-        # For now, return a placeholder (phase 5 will implement actual simulation)
-        # In a future phase, we'll integrate with Qiskit or a custom simulator.
-        # For demonstration, return a simple Bell state if circuit looks like Bell.
-        num_qubits = circuit.num_qubits
-        # Detect if circuit has H on 0 and CX on 0,1 -> Bell state
-        ops = circuit.operations
-        if len(ops) == 2 and ops[0].type.name == 'H' and ops[0].qubits == [0] and ops[1].type.name == 'CX' and ops[1].qubits == [0,1]:
-            return np.array([1/np.sqrt(2), 0, 0, 1/np.sqrt(2)], dtype=complex)
-        # Default: |0...0>
-        state = np.zeros(2**num_qubits, dtype=complex)
-        state[0] = 1.0
-        return state
+    def compute(ast: CircuitAST) -> np.ndarray:
+        num_qubits = ast.num_qubits
+        if num_qubits == 0:
+            max_q = -1
+            for gate in ast.operations:
+                if gate.qubits:
+                    max_q = max(max_q, max(gate.qubits))
+            if max_q >= 0:
+                num_qubits = max_q + 1
+            else:
+                num_qubits = 1
+        qc = QuantumCircuit(num_qubits)
+        for gate in ast.operations:
+            if gate.type == GateType.H:
+                qc.h(gate.qubits[0])
+            elif gate.type == GateType.CX:
+                qc.cx(gate.qubits[0], gate.qubits[1])
+            elif gate.type == GateType.CZ:
+                qc.cz(gate.qubits[0], gate.qubits[1])
+            elif gate.type == GateType.SWAP:
+                qc.swap(gate.qubits[0], gate.qubits[1])
+            elif gate.type == GateType.X:
+                qc.x(gate.qubits[0])
+            elif gate.type == GateType.Y:
+                qc.y(gate.qubits[0])
+            elif gate.type == GateType.Z:
+                qc.z(gate.qubits[0])
+            elif gate.type == GateType.U:
+                if len(gate.params) >= 3:
+                    qc.u(gate.params[0], gate.params[1], gate.params[2], gate.qubits[0])
+            elif gate.type == GateType.RX:
+                if gate.params:
+                    qc.rx(gate.params[0], gate.qubits[0])
+            elif gate.type == GateType.RY:
+                if gate.params:
+                    qc.ry(gate.params[0], gate.qubits[0])
+            elif gate.type == GateType.RZ:
+                if gate.params:
+                    qc.rz(gate.params[0], gate.qubits[0])
+            elif gate.type == GateType.PHASE:
+                if gate.params:
+                    qc.p(gate.params[0], gate.qubits[0])
+            elif gate.type == GateType.MEASURE:
+                # ignore for statevector
+                pass
+        simulator = AerSimulator()
+        qc.save_statevector()
+        result = simulator.run(qc).result()
+        return result.get_statevector()
 
     @staticmethod
     def display(state: np.ndarray) -> str:

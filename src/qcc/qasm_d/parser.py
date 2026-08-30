@@ -16,6 +16,9 @@ class QASMDParser:
         'A': GateType.MEASURE,
         'B': GateType.RESET,
         'C': GateType.BARRIER,
+        'D': GateType.RZ,
+        'E': GateType.U,
+        'F': GateType.CZ,
     }
 
     @classmethod
@@ -23,74 +26,70 @@ class QASMDParser:
         if not s:
             raise ParseError("Empty string")
 
-        tokens = []
-        i = 0
-        # First token is qubit count
-        while i < len(s) and s[i] != '0':
-            tokens.append(s[i])
-            i += 1
-        if i >= len(s):
+        delim_pos = s.find('0')
+        if delim_pos == -1:
             raise ParseError("Missing delimiter after qubit count")
-        i += 1  # skip '0'
-
         try:
-            num_qubits = int(''.join(tokens))
+            num_qubits = int(s[:delim_pos])
         except ValueError:
             raise ParseError("Invalid qubit count")
+        s = s[delim_pos+1:]
 
         ast = CircuitAST(num_qubits=num_qubits)
 
-        # Parse operations
-        while i < len(s):
-            if s[i] == '0':
-                # End of circuit or measure all
-                if i + 1 < len(s) and s[i+1] == '0':
-                    # '00' = measure all
-                    for q in range(num_qubits):
-                        gate = Gate(type=GateType.MEASURE, qubits=[q], classical_bits=[q])
-                        ast.add_gate(gate)
-                    i += 2
-                    continue
-                else:
-                    # single '0' – separator, skip
-                    i += 1
-                    continue
+        while s:
+            next_delim = s.find('0')
+            if next_delim == -1:
+                token = s
+                s = ''
+            else:
+                token = s[:next_delim]
+                s = s[next_delim+1:]
 
-            # Read operation token (could be multiple digits like '10' for H on qubit 0)
-            op_start = i
-            while i < len(s) and s[i] != '0':
-                i += 1
-            op_str = s[op_start:i]
-
-            if not op_str:
+            if not token:
                 continue
 
-            # First char is gate type, rest are parameters (qubit indices)
-            gate_code = op_str[0]
-            if gate_code not in cls._gate_map:
-                raise ParseError(f"Unknown gate code: {gate_code}")
-            gate_type = cls._gate_map[gate_code]
-
-            # Parse parameters
-            params = []
-            for ch in op_str[1:]:
-                if ch.isdigit():
-                    params.append(int(ch))
-                else:
-                    raise ParseError(f"Invalid parameter character: {ch}")
-
-            if gate_type == GateType.H:
-                if len(params) != 1:
-                    raise ParseError(f"H requires 1 qubit, got {len(params)}")
-                ast.add_gate(Gate(type=gate_type, qubits=params))
-            elif gate_type in (GateType.CX, GateType.SWAP):
-                if len(params) != 2:
-                    raise ParseError(f"{gate_type.value} requires 2 qubits, got {len(params)}")
-                ast.add_gate(Gate(type=gate_type, qubits=params))
+            if token == '0':
+                continue
+            elif token == '00':
+                for q in range(num_qubits):
+                    ast.add_gate(Gate(type=GateType.MEASURE, qubits=[q], classical_bits=[q]))
+                break
             else:
-                # Single-qubit gates
-                if len(params) != 1:
-                    raise ParseError(f"{gate_type.value} requires 1 qubit, got {len(params)}")
-                ast.add_gate(Gate(type=gate_type, qubits=params))
+                gate_code = token[0]
+                if gate_code not in cls._gate_map:
+                    raise ParseError(f"Unknown gate code: {gate_code}")
+                gate_type = cls._gate_map[gate_code]
+                params_str = token[1:]
+                params = []
+                if params_str:
+                    for ch in params_str:
+                        if ch.isdigit():
+                            params.append(int(ch))
+                        else:
+                            raise ParseError(f"Invalid parameter character: {ch}")
+                # Convert 1-based indices to 0-based
+                params = [p - 1 for p in params]
+
+                if gate_type == GateType.H:
+                    if len(params) != 1:
+                        raise ParseError(f"H requires 1 qubit, got {len(params)}")
+                    ast.add_gate(Gate(type=gate_type, qubits=params))
+                elif gate_type in (GateType.CX, GateType.SWAP, GateType.CZ):
+                    if len(params) != 2:
+                        raise ParseError(f"{gate_type.value} requires 2 qubits, got {len(params)}")
+                    ast.add_gate(Gate(type=gate_type, qubits=params))
+                elif gate_type == GateType.U:
+                    if len(params) != 3:
+                        raise ParseError(f"U requires 3 parameters, got {len(params)}")
+                    ast.add_gate(Gate(type=gate_type, qubits=[params[0]], params=[float(p) for p in params[1:]]))
+                elif gate_type in (GateType.RX, GateType.RY, GateType.RZ, GateType.PHASE):
+                    if len(params) < 2:
+                        raise ParseError(f"{gate_type.value} requires at least 2 parameters (qubit and angle)")
+                    ast.add_gate(Gate(type=gate_type, qubits=[params[0]], params=[float(params[1])]))
+                else:
+                    if len(params) != 1:
+                        raise ParseError(f"{gate_type.value} requires 1 qubit, got {len(params)}")
+                    ast.add_gate(Gate(type=gate_type, qubits=params))
 
         return ast
