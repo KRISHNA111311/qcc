@@ -13,6 +13,11 @@ class QCCRepl:
             "new": self.cmd_new,
             "add": self.cmd_add,
             "list": self.cmd_list,
+            "undo": self.cmd_undo,
+            "redo": self.cmd_redo,
+            "draw": self.cmd_draw,
+            "save": self.cmd_save,
+            "load": self.cmd_load,
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
             "help": self.cmd_help,
@@ -24,7 +29,7 @@ class QCCRepl:
             history=FileHistory(os.path.expanduser("~/.qcc_history")),
             auto_suggest=AutoSuggestFromHistory(),
         )
-        print("Quantum Circuit Composer v0.1.0 (Phase 2)")
+        print("Quantum Circuit Composer v0.1.0 (Phase 3)")
         print("Type 'help' for commands. Type 'exit' to quit.")
 
         while True:
@@ -84,6 +89,41 @@ class QCCRepl:
         for i, op in enumerate(ops):
             print(f"{i}: {op.type.value} {op.qubits} {op.params}")
 
+    def cmd_undo(self, args):
+        try:
+            self.session.undo()
+            print("✅ Undo successful.")
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_redo(self, args):
+        try:
+            self.session.redo()
+            print("✅ Redo successful.")
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_draw(self, args):
+        from ..visualizers.ascii_circuit import AsciiCircuit
+        print(AsciiCircuit.draw(self.session.circuit))
+
+    def cmd_save(self, args):
+        if len(args) < 1:
+            print("Usage: save <filename.json>")
+            return
+        from ..persistence.file_manager import FileManager
+        FileManager.save_json(self.session.circuit, args[0])
+        print(f"✅ Circuit saved to {args[0]}")
+
+    def cmd_load(self, args):
+        if len(args) < 1:
+            print("Usage: load <filename.json>")
+            return
+        from ..persistence.file_manager import FileManager
+        self.session.circuit = FileManager.load_json(args[0])
+        self.session.commit()
+        print(f"✅ Circuit loaded from {args[0]}")
+
     def cmd_exit(self, args):
         print("Goodbye!")
         raise EOFError
@@ -94,6 +134,11 @@ Available commands:
   new               – Create a new blank circuit
   add <gate> <q>   – Add a gate (e.g., add H 0, add CX 0 1)
   list              – Show all gates
+  undo              – Undo the last action
+  redo              – Redo the last undone action
+  draw              – Draw circuit in ASCII
+  save <file.json>  – Save circuit to JSON file
+  load <file.json>  – Load circuit from JSON file
   exit / quit       – Exit the REPL
   help              – Show this help
 """
