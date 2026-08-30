@@ -1,5 +1,4 @@
 ﻿import re
-from typing import List, Tuple
 from ..core.models import CircuitAST, Gate, GateType
 from ..core.exceptions import ParseError
 
@@ -27,7 +26,7 @@ class QASMDParser:
         if not s:
             raise ParseError("Empty string")
 
-        # Find first delimiter
+        # Find the first delimiter
         delim_pos = s.find('0')
         if delim_pos == -1:
             raise ParseError("Missing delimiter after qubit count")
@@ -35,15 +34,15 @@ class QASMDParser:
             num_qubits = int(s[:delim_pos])
         except ValueError:
             raise ParseError("Invalid qubit count")
-        s = s[delim_pos+1:]  # remove qubit count and delimiter
+        # Remove the qubit count and the first delimiter
+        s = s[delim_pos+1:]
 
         ast = CircuitAST(num_qubits=num_qubits)
 
-        # We'll split on '0' but handle consecutive zeros as a single token "00"
-        # We'll manually parse by scanning for non-zero runs, but we need to detect "00".
+        # We'll scan the string token by token.
         i = 0
         while i < len(s):
-            # Skip leading zeros (they are delimiters)
+            # Skip any leading zeros (they are delimiters)
             zero_count = 0
             while i < len(s) and s[i] == '0':
                 zero_count += 1
@@ -52,8 +51,9 @@ class QASMDParser:
                 # Two or more zeros: measure all and stop
                 for q in range(num_qubits):
                     ast.add_gate(Gate(type=GateType.MEASURE, qubits=[q], classical_bits=[q]))
-                # If there are more characters after, they would be ignored (spec says stop)
+                # If there are remaining characters, they are ignored.
                 break
+
             # Now we have a token (non-zero characters)
             token_start = i
             while i < len(s) and s[i] != '0':
@@ -67,6 +67,9 @@ class QASMDParser:
             if gate_code not in cls._gate_map:
                 raise ParseError(f"Unknown gate code: {gate_code}")
             gate_type = cls._gate_map[gate_code]
+
+            # Parameters are the rest of the token, each character is a digit
+            # We'll parse them as a list of integers
             params_str = token[1:]
             params = []
             for ch in params_str:
@@ -78,6 +81,7 @@ class QASMDParser:
             # Convert 1-based indices to 0-based
             params = [p - 1 for p in params]
 
+            # Now build the gate based on type
             if gate_type == GateType.H:
                 if len(params) != 1:
                     raise ParseError(f"H requires 1 qubit, got {len(params)}")

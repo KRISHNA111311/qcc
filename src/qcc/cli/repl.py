@@ -93,12 +93,28 @@ class QCCRepl:
             print("Usage: add <gate> <q0> [q1] [param...]")
             return
         gate_name = args[0].upper()
-        try:
-            qubits = [int(q) for q in args[1:] if q.replace('-', '').isdigit()]
-        except ValueError:
-            print("Invalid qubit indices. Use numbers.")
+        
+        # Parse qubits and parameters
+        qubits = []
+        params = []
+        for arg in args[1:]:
+            try:
+                # Try to interpret as int (qubit index)
+                q = int(arg)
+                qubits.append(q)
+            except ValueError:
+                # Not an int, treat as float parameter
+                try:
+                    p = float(arg)
+                    params.append(p)
+                except ValueError:
+                    print(f"Invalid argument: {arg}")
+                    return
+        if not qubits:
+            print("At least one qubit required.")
             return
 
+        # Find gate type
         gate_type = None
         for g in GateType:
             if g.value.upper() == gate_name:
@@ -108,21 +124,24 @@ class QCCRepl:
             print(f"Unknown gate: {gate_name}. Available: {[g.value for g in GateType]}")
             return
 
-        gate = Gate(type=gate_type, qubits=qubits)
+        # Create the gate with parameters
+        gate = Gate(type=gate_type, qubits=qubits, params=params)
         self.session.circuit.add_gate(gate)
 
+        # Update num_qubits based on highest qubit index
         if qubits:
             max_q = max(qubits)
             if self.session.circuit.num_qubits <= max_q:
                 self.session.circuit.num_qubits = max_q + 1
 
+        # Update num_classical if measure gate
         if gate_type == GateType.MEASURE and gate.classical_bits:
             max_c = max(gate.classical_bits)
             if self.session.circuit.num_classical <= max_c:
                 self.session.circuit.num_classical = max_c + 1
 
         self.session.commit()
-        print(f"✅ Added {gate_name} on qubits {qubits}.")
+        print(f"✅ Added {gate_name} on qubits {qubits} with params {params}.")
 
     def cmd_list(self, args):
         ops = self.session.circuit.operations
