@@ -1,0 +1,24 @@
+{
+  "num_qubits": 2,
+  "num_classical": 0,
+  "operations": [
+    {
+      "type": "H",
+      "qubits": [
+        0
+      ],
+      "params": [],
+      "classical_bits": []
+    },
+    {
+      "type": "CX",
+      "qubits": [
+        0,
+        1
+      ],
+      "params": [],
+      "classical_bits": []
+    }
+  ],
+  "metadata": {}
+}

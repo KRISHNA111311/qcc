@@ -32,6 +32,28 @@ class QCCRepl:
         }
         self.completer = WordCompleter(list(self.commands.keys()), ignore_case=True)
 
+    def _ensure_num_qubits(self):
+        """Ensure num_qubits is set correctly based on operations."""
+        if self.session.circuit.num_qubits == 0:
+            max_q = -1
+            for op in self.session.circuit.operations:
+                if op.qubits:
+                    max_q = max(max_q, max(op.qubits))
+            if max_q >= 0:
+                self.session.circuit.num_qubits = max_q + 1
+            else:
+                self.session.circuit.num_qubits = 1
+
+    def _ensure_num_classical(self):
+        """Ensure num_classical is set correctly based on measure gates."""
+        if self.session.circuit.num_classical == 0:
+            max_c = -1
+            for op in self.session.circuit.operations:
+                if op.type == GateType.MEASURE and op.classical_bits:
+                    max_c = max(max_c, max(op.classical_bits))
+            if max_c >= 0:
+                self.session.circuit.num_classical = max_c + 1
+
     def run(self):
         session = PromptSession(
             history=FileHistory(os.path.expanduser("~/.qcc_history")),
@@ -79,7 +101,7 @@ class QCCRepl:
 
         gate_type = None
         for g in GateType:
-            if g.value == gate_name:
+            if g.value.upper() == gate_name:
                 gate_type = g
                 break
         if gate_type is None:
@@ -89,13 +111,11 @@ class QCCRepl:
         gate = Gate(type=gate_type, qubits=qubits)
         self.session.circuit.add_gate(gate)
 
-        # Update num_qubits based on the highest qubit index
         if qubits:
             max_q = max(qubits)
             if self.session.circuit.num_qubits <= max_q:
                 self.session.circuit.num_qubits = max_q + 1
 
-        # Update num_classical if measure gate
         if gate_type == GateType.MEASURE and gate.classical_bits:
             max_c = max(gate.classical_bits)
             if self.session.circuit.num_classical <= max_c:
@@ -154,6 +174,8 @@ class QCCRepl:
         from ..qasm_d.parser import QASMDParser
         try:
             self.session.circuit = QASMDParser.parse(args[0])
+            self._ensure_num_qubits()
+            self._ensure_num_classical()
             self.session.commit()
             print("✅ Circuit imported from QASM-D")
             if args[0].endswith('00'):
@@ -205,15 +227,7 @@ class QCCRepl:
     def cmd_bloch(self, args):
         from ..visualizers.bloch import BlochVisualizer
         try:
-            if self.session.circuit.num_qubits == 0:
-                max_q = -1
-                for op in self.session.circuit.operations:
-                    if op.qubits:
-                        max_q = max(max_q, max(op.qubits))
-                if max_q >= 0:
-                    self.session.circuit.num_qubits = max_q + 1
-                else:
-                    self.session.circuit.num_qubits = 1
+            self._ensure_num_qubits()
             state = BlochVisualizer.compute_statevector(self.session.circuit)
             vectors = BlochVisualizer.compute_bloch_vectors(state)
             filename = args[0] if args else "bloch.png"
@@ -227,6 +241,9 @@ class QCCRepl:
         from qiskit.visualization import plot_histogram
         import matplotlib.pyplot as plt
         import os
+
+        self._ensure_num_qubits()
+        self._ensure_num_classical()
 
         shots = 1024
         backend_name = "aer_simulator"
@@ -242,16 +259,9 @@ class QCCRepl:
         try:
             num_qubits = self.session.circuit.num_qubits
             if num_qubits == 0:
-                max_q = -1
-                for op in self.session.circuit.operations:
-                    if op.qubits:
-                        max_q = max(max_q, max(op.qubits))
-                if max_q >= 0:
-                    num_qubits = max_q + 1
-                else:
-                    num_qubits = 1
-
-            qc = QuantumCircuit(num_qubits)
+                num_qubits = 1
+            num_classical = self.session.circuit.num_classical
+            qc = QuantumCircuit(num_qubits, num_classical)
 
             for gate in self.session.circuit.operations:
                 if gate.type.name == 'H':

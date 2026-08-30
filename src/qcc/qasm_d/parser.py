@@ -39,8 +39,8 @@ class QASMDParser:
 
         ast = CircuitAST(num_qubits=num_qubits)
 
-        # We'll parse the remaining string by scanning for tokens separated by '0'
-        # But we need to detect '00' as a special token (measure all)
+        # We'll split on '0' but handle consecutive zeros as a single token "00"
+        # We'll manually parse by scanning for non-zero runs, but we need to detect "00".
         i = 0
         while i < len(s):
             # Skip leading zeros (they are delimiters)
@@ -111,5 +111,14 @@ class QASMDParser:
                 if len(params) != 1:
                     raise ParseError(f"{gate_type.value} requires 1 qubit, got {len(params)}")
                 ast.add_gate(Gate(type=gate_type, qubits=params))
+
+        # If num_qubits was not set or is 0, try to derive from operations
+        if ast.num_qubits == 0:
+            max_q = -1
+            for op in ast.operations:
+                if op.qubits:
+                    max_q = max(max_q, max(op.qubits))
+            if max_q >= 0:
+                ast.num_qubits = max_q + 1
 
         return ast
