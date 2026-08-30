@@ -1,13 +1,31 @@
-﻿from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Any
-from enum import Enum
+﻿from enum import Enum
+from dataclasses import dataclass, field
+from typing import List, Optional, Any
 import copy
 
 class GateType(Enum):
-    H = "H"; X = "X"; Y = "Y"; Z = "Z"
-    CX = "CX"; CZ = "CZ"; SWAP = "SWAP"
-    U = "U"; PHASE = "P"; RX = "RX"; RY = "RY"; RZ = "RZ"
-    MEASURE = "measure"; RESET = "reset"; BARRIER = "barrier"
+    H = "H"
+    X = "X"
+    Y = "Y"
+    Z = "Z"
+    CX = "CX"
+    CZ = "CZ"
+    SWAP = "SWAP"
+    CCX = "CCX"          # Toffoli
+    I = "I"              # Identity
+    S = "S"              # Phase π/2
+    SDG = "SDG"          # Phase -π/2
+    T = "T"              # Phase π/4
+    TDG = "TDG"          # Phase -π/4
+    SX = "SX"            # √X
+    U = "U"
+    PHASE = "P"
+    RX = "RX"
+    RY = "RY"
+    RZ = "RZ"
+    MEASURE = "measure"
+    RESET = "reset"
+    BARRIER = "barrier"
 
 @dataclass
 class Gate:
@@ -22,7 +40,7 @@ class CircuitAST:
     num_qubits: int = 0
     num_classical: int = 0
     operations: List[Gate] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict)
 
     def add_gate(self, gate: Gate) -> None:
         self.operations.append(gate)

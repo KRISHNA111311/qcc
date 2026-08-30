@@ -1,4 +1,4 @@
-﻿import re
+﻿from typing import List, Tuple
 from ..core.models import CircuitAST, Gate, GateType
 from ..core.exceptions import ParseError
 
@@ -19,6 +19,13 @@ class QASMDParser:
         'D': GateType.RZ,
         'E': GateType.U,
         'F': GateType.CZ,
+        'G': GateType.CCX,
+        'I': GateType.I,
+        'J': GateType.S,
+        'K': GateType.SDG,
+        'L': GateType.T,
+        'M': GateType.TDG,
+        'N': GateType.SX,
     }
 
     @classmethod
@@ -26,62 +33,60 @@ class QASMDParser:
         if not s:
             raise ParseError("Empty string")
 
-        # Find the first delimiter
-        delim_pos = s.find('0')
-        if delim_pos == -1:
-            raise ParseError("Missing delimiter after qubit count")
+        # Split on '#' delimiter
+        parts = s.split('#')
+        if not parts:
+            raise ParseError("Invalid format")
+
         try:
-            num_qubits = int(s[:delim_pos])
+            num_qubits = int(parts[0])
         except ValueError:
             raise ParseError("Invalid qubit count")
-        # Remove the qubit count and the first delimiter
-        s = s[delim_pos+1:]
 
         ast = CircuitAST(num_qubits=num_qubits)
+        tokens = parts[1:]
 
-        # We'll scan the string token by token.
-        i = 0
-        while i < len(s):
-            # Skip any leading zeros (they are delimiters)
-            zero_count = 0
-            while i < len(s) and s[i] == '0':
-                zero_count += 1
-                i += 1
-            if zero_count >= 2:
-                # Two or more zeros: measure all and stop
+        for token in tokens:
+            if token == '00':
+                # Measure all and stop
                 for q in range(num_qubits):
                     ast.add_gate(Gate(type=GateType.MEASURE, qubits=[q], classical_bits=[q]))
-                # If there are remaining characters, they are ignored.
                 break
 
-            # Now we have a token (non-zero characters)
-            token_start = i
-            while i < len(s) and s[i] != '0':
-                i += 1
-            token = s[token_start:i]
             if not token:
                 continue
 
-            # Process the token
             gate_code = token[0]
             if gate_code not in cls._gate_map:
                 raise ParseError(f"Unknown gate code: {gate_code}")
             gate_type = cls._gate_map[gate_code]
-
-            # Parameters are the rest of the token, each character is a digit
-            # We'll parse them as a list of integers
             params_str = token[1:]
+
+            # For gates with angle (RX, RY, RZ, PHASE): <code><qubit><4-digit angle>
+            if gate_type in (GateType.RX, GateType.RY, GateType.RZ, GateType.PHASE):
+                if len(params_str) < 5:
+                    raise ParseError(f"{gate_type.value} requires qubit and 4-digit angle")
+                qubit = int(params_str[0]) - 1  # 1-based to 0-based
+                angle_str = params_str[1:5]
+                try:
+                    angle = float(angle_str) / 100.0
+                except ValueError:
+                    raise ParseError(f"Invalid angle format for {gate_type.value}: {angle_str}")
+                if qubit < 0 or qubit >= num_qubits:
+                    raise ParseError(f"Qubit index {qubit+1} out of range")
+                ast.add_gate(Gate(type=gate_type, qubits=[qubit], params=[angle]))
+                continue
+
+            # For other gates, parse digits as numbers (qubit indices or classical bits)
             params = []
             for ch in params_str:
                 if ch.isdigit():
                     params.append(int(ch))
                 else:
                     raise ParseError(f"Invalid parameter character: {ch}")
-
-            # Convert 1-based indices to 0-based
+            # Convert 1-based to 0-based for qubit indices
             params = [p - 1 for p in params]
 
-            # Now build the gate based on type
             if gate_type == GateType.H:
                 if len(params) != 1:
                     raise ParseError(f"H requires 1 qubit, got {len(params)}")
@@ -89,6 +94,10 @@ class QASMDParser:
             elif gate_type in (GateType.CX, GateType.CZ, GateType.SWAP):
                 if len(params) != 2:
                     raise ParseError(f"{gate_type.value} requires 2 qubits, got {len(params)}")
+                ast.add_gate(Gate(type=gate_type, qubits=params))
+            elif gate_type == GateType.CCX:
+                if len(params) != 3:
+                    raise ParseError("CCX requires 3 qubits (control1, control2, target)")
                 ast.add_gate(Gate(type=gate_type, qubits=params))
             elif gate_type == GateType.U:
                 if len(params) < 4:
@@ -98,12 +107,10 @@ class QASMDParser:
                 phi = float(params[2])
                 lam = float(params[3])
                 ast.add_gate(Gate(type=gate_type, qubits=[qubit], params=[theta, phi, lam]))
-            elif gate_type in (GateType.RX, GateType.RY, GateType.RZ, GateType.PHASE):
-                if len(params) < 2:
-                    raise ParseError(f"{gate_type.value} requires at least 2 parameters (qubit, angle)")
-                qubit = params[0]
-                angle = float(params[1])
-                ast.add_gate(Gate(type=gate_type, qubits=[qubit], params=[angle]))
+            elif gate_type in (GateType.I, GateType.S, GateType.SDG, GateType.T, GateType.TDG, GateType.SX):
+                if len(params) != 1:
+                    raise ParseError(f"{gate_type.value} requires 1 qubit, got {len(params)}")
+                ast.add_gate(Gate(type=gate_type, qubits=params))
             elif gate_type == GateType.MEASURE:
                 if len(params) < 1:
                     raise ParseError("MEASURE requires at least 1 qubit")
@@ -116,7 +123,6 @@ class QASMDParser:
                     raise ParseError(f"{gate_type.value} requires 1 qubit, got {len(params)}")
                 ast.add_gate(Gate(type=gate_type, qubits=params))
 
-        # If num_qubits was not set or is 0, try to derive from operations
         if ast.num_qubits == 0:
             max_q = -1
             for op in ast.operations:

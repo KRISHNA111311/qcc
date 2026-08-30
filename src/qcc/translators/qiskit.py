@@ -17,6 +17,20 @@ class QiskitTranslator:
                 lines.append(f"qc.cz({gate.qubits[0]}, {gate.qubits[1]})")
             elif gate.type == GateType.SWAP:
                 lines.append(f"qc.swap({gate.qubits[0]}, {gate.qubits[1]})")
+            elif gate.type == GateType.CCX:
+                lines.append(f"qc.ccx({gate.qubits[0]}, {gate.qubits[1]}, {gate.qubits[2]})")
+            elif gate.type == GateType.I:
+                lines.append(f"qc.i({gate.qubits[0]})")
+            elif gate.type == GateType.S:
+                lines.append(f"qc.s({gate.qubits[0]})")
+            elif gate.type == GateType.SDG:
+                lines.append(f"qc.sdg({gate.qubits[0]})")
+            elif gate.type == GateType.T:
+                lines.append(f"qc.t({gate.qubits[0]})")
+            elif gate.type == GateType.TDG:
+                lines.append(f"qc.tdg({gate.qubits[0]})")
+            elif gate.type == GateType.SX:
+                lines.append(f"qc.sx({gate.qubits[0]})")
             elif gate.type == GateType.X:
                 lines.append(f"qc.x({gate.qubits[0]})")
             elif gate.type == GateType.Y:

@@ -14,25 +14,42 @@ class QASMDEncoder:
         GateType.MEASURE: 'A',
         GateType.RESET: 'B',
         GateType.BARRIER: 'C',
+        GateType.RZ: 'D',
+        GateType.U: 'E',
+        GateType.CZ: 'F',
+        GateType.CCX: 'G',
+        GateType.I: 'I',
+        GateType.S: 'J',
+        GateType.SDG: 'K',
+        GateType.T: 'L',
+        GateType.TDG: 'M',
+        GateType.SX: 'N',
     }
 
     @classmethod
     def encode(cls, ast: CircuitAST) -> str:
-        parts = [str(ast.num_qubits), '0']
+        parts = [str(ast.num_qubits)]
 
         for gate in ast.operations:
             if gate.type not in cls._reverse_map:
-                # Skip unknown gates
                 continue
             code = cls._reverse_map[gate.type]
-            qubits_str = ''.join(str(q) for q in gate.qubits)
-            if gate.type == GateType.MEASURE:
-                # For measure, we use code + qubit + classical bit
-                if gate.classical_bits:
-                    qubits_str += str(gate.classical_bits[0])
-            parts.append(code + qubits_str)
-            parts.append('0')
+            # For gates with angles (RX, RY, RZ, PHASE): encode angle as 4-digit integer (scaled by 100)
+            if gate.type in (GateType.RX, GateType.RY, GateType.RZ, GateType.PHASE):
+                qubit = gate.qubits[0] + 1  # 0-based to 1-based
+                angle = int(gate.params[0] * 100) if gate.params else 0
+                angle_str = f"{angle:04d}"
+                token = code + str(qubit) + angle_str
+                parts.append(token)
+            else:
+                # For other gates, encode qubits and classical bits
+                qubits_str = ''.join(str(q + 1) for q in gate.qubits)  # 1-based
+                if gate.type == GateType.MEASURE and gate.classical_bits:
+                    classical_str = ''.join(str(c + 1) for c in gate.classical_bits)
+                    token = code + qubits_str + classical_str
+                else:
+                    token = code + qubits_str
+                parts.append(token)
 
-        # End with '00' to indicate measurement and run
-        parts.append('00')
-        return ''.join(parts)
+        parts.append('00')  # measure all
+        return '#'.join(parts)

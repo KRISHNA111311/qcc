@@ -21,6 +21,20 @@ class QASM3Translator:
                 lines.append(f"cz q[{gate.qubits[0]}], q[{gate.qubits[1]}];")
             elif gate.type == GateType.SWAP:
                 lines.append(f"swap q[{gate.qubits[0]}], q[{gate.qubits[1]}];")
+            elif gate.type == GateType.CCX:
+                lines.append(f"ccx q[{gate.qubits[0]}], q[{gate.qubits[1]}], q[{gate.qubits[2]}];")
+            elif gate.type == GateType.I:
+                lines.append(f"id q[{gate.qubits[0]}];")
+            elif gate.type == GateType.S:
+                lines.append(f"s q[{gate.qubits[0]}];")
+            elif gate.type == GateType.SDG:
+                lines.append(f"sdg q[{gate.qubits[0]}];")
+            elif gate.type == GateType.T:
+                lines.append(f"t q[{gate.qubits[0]}];")
+            elif gate.type == GateType.TDG:
+                lines.append(f"tdg q[{gate.qubits[0]}];")
+            elif gate.type == GateType.SX:
+                lines.append(f"sx q[{gate.qubits[0]}];")
             elif gate.type == GateType.X:
                 lines.append(f"x q[{gate.qubits[0]}];")
             elif gate.type == GateType.Y:
