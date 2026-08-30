@@ -9,7 +9,7 @@ from ..core.models import Gate, GateType, CircuitAST
 class QCCRepl:
     def __init__(self):
         self.session = SessionState()
-        self.commands = {
+        self.commands = {"import-d": self.cmd_import_d, "export-d": self.cmd_export_d, "qiskit": self.cmd_qiskit, "qasm": self.cmd_qasm, 
             "new": self.cmd_new,
             "add": self.cmd_add,
             "list": self.cmd_list,
@@ -143,3 +143,40 @@ Available commands:
   help              – Show this help
 """
         print(help_text)
+
+
+    def cmd_import_d(self, args):
+        if len(args) < 1:
+            print("Usage: import-d <qasm_d_string>")
+            return
+        from ..qasm_d.parser import QASMDParser
+        try:
+            self.session.circuit = QASMDParser.parse(args[0])
+            self.session.commit()
+            print("✅ Circuit imported from QASM-D")
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_export_d(self, args):
+        from ..qasm_d.encoder import QASMDEncoder
+        try:
+            s = QASMDEncoder.encode(self.session.circuit)
+            print(f"QASM-D: {s}")
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_qiskit(self, args):
+        from ..translators.qiskit import QiskitTranslator
+        try:
+            code = QiskitTranslator.generate(self.session.circuit)
+            print(code)
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_qasm(self, args):
+        from ..translators.qasm3 import QASM3Translator
+        try:
+            code = QASM3Translator.generate(self.session.circuit)
+            print(code)
+        except Exception as e:
+            print(f"❌ {e}")
