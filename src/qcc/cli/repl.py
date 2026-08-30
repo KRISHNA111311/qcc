@@ -9,7 +9,7 @@ from ..core.models import Gate, GateType, CircuitAST
 class QCCRepl:
     def __init__(self):
         self.session = SessionState()
-        self.commands = {"import-d": self.cmd_import_d, "export-d": self.cmd_export_d, "qiskit": self.cmd_qiskit, "qasm": self.cmd_qasm, 
+        self.commands = {
             "new": self.cmd_new,
             "add": self.cmd_add,
             "list": self.cmd_list,
@@ -18,6 +18,13 @@ class QCCRepl:
             "draw": self.cmd_draw,
             "save": self.cmd_save,
             "load": self.cmd_load,
+            "import-d": self.cmd_import_d,
+            "export-d": self.cmd_export_d,
+            "qiskit": self.cmd_qiskit,
+            "qasm": self.cmd_qasm,
+            "statevector": self.cmd_statevector,
+            "probs": self.cmd_probs,
+            "bloch": self.cmd_bloch,
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
             "help": self.cmd_help,
@@ -29,7 +36,7 @@ class QCCRepl:
             history=FileHistory(os.path.expanduser("~/.qcc_history")),
             auto_suggest=AutoSuggestFromHistory(),
         )
-        print("Quantum Circuit Composer v0.1.0 (Phase 3)")
+        print("Quantum Circuit Composer v0.1.0 (Phase 5)")
         print("Type 'help' for commands. Type 'exit' to quit.")
 
         while True:
@@ -50,6 +57,8 @@ class QCCRepl:
             except EOFError:
                 print("\nGoodbye!")
                 break
+
+    # ----- Command Handlers -----
 
     def cmd_new(self, args):
         self.session.circuit = CircuitAST()
@@ -78,6 +87,19 @@ class QCCRepl:
 
         gate = Gate(type=gate_type, qubits=qubits)
         self.session.circuit.add_gate(gate)
+
+        # Update num_qubits based on the highest qubit index
+        if qubits:
+            max_q = max(qubits)
+            if self.session.circuit.num_qubits <= max_q:
+                self.session.circuit.num_qubits = max_q + 1
+
+        # Update num_classical if measure gate
+        if gate_type == GateType.MEASURE and gate.classical_bits:
+            max_c = max(gate.classical_bits)
+            if self.session.circuit.num_classical <= max_c:
+                self.session.circuit.num_classical = max_c + 1
+
         self.session.commit()
         print(f"✅ Added {gate_name} on qubits {qubits}.")
 
@@ -124,27 +146,6 @@ class QCCRepl:
         self.session.commit()
         print(f"✅ Circuit loaded from {args[0]}")
 
-    def cmd_exit(self, args):
-        print("Goodbye!")
-        raise EOFError
-
-    def cmd_help(self, args):
-        help_text = """
-Available commands:
-  new               – Create a new blank circuit
-  add <gate> <q>   – Add a gate (e.g., add H 0, add CX 0 1)
-  list              – Show all gates
-  undo              – Undo the last action
-  redo              – Redo the last undone action
-  draw              – Draw circuit in ASCII
-  save <file.json>  – Save circuit to JSON file
-  load <file.json>  – Load circuit from JSON file
-  exit / quit       – Exit the REPL
-  help              – Show this help
-"""
-        print(help_text)
-
-
     def cmd_import_d(self, args):
         if len(args) < 1:
             print("Usage: import-d <qasm_d_string>")
@@ -180,3 +181,67 @@ Available commands:
             print(code)
         except Exception as e:
             print(f"❌ {e}")
+
+    def cmd_statevector(self, args):
+        from ..visualizers.statevector import StatevectorVisualizer
+        try:
+            state = StatevectorVisualizer.compute(self.session.circuit)
+            print(StatevectorVisualizer.display(state))
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_probs(self, args):
+        from ..visualizers.probabilities import ProbabilitiesVisualizer
+        try:
+            probs = ProbabilitiesVisualizer.compute(self.session.circuit)
+            print(ProbabilitiesVisualizer.display(probs))
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_bloch(self, args):
+        from ..visualizers.bloch import BlochVisualizer
+        try:
+            # Ensure num_qubits is set from the circuit
+            if self.session.circuit.num_qubits == 0:
+                max_q = -1
+                for op in self.session.circuit.operations:
+                    if op.qubits:
+                        max_q = max(max_q, max(op.qubits))
+                if max_q >= 0:
+                    self.session.circuit.num_qubits = max_q + 1
+                else:
+                    self.session.circuit.num_qubits = 1
+            # Compute statevector using BlochVisualizer
+            state = BlochVisualizer.compute_statevector(self.session.circuit)
+            vectors = BlochVisualizer.compute_bloch_vectors(state)
+            filename = args[0] if args else "bloch.png"
+            BlochVisualizer.plot(vectors, save_path=filename)
+        except Exception as e:
+            print(f"❌ {e}")
+
+    def cmd_exit(self, args):
+        print("Goodbye!")
+        raise EOFError
+
+    def cmd_help(self, args):
+        help_text = """
+Available commands:
+  new               – Create a new blank circuit
+  add <gate> <q>   – Add a gate (e.g., add H 0, add CX 0 1)
+  list              – Show all gates
+  undo              – Undo the last action
+  redo              – Redo the last undone action
+  draw              – Draw circuit in ASCII
+  save <file.json>  – Save circuit to JSON file
+  load <file.json>  – Load circuit from JSON file
+  import-d <str>    – Import circuit from QASM-D string
+  export-d          – Export circuit as QASM-D string
+  qiskit            – Generate Qiskit Python code
+  qasm              – Generate OpenQASM 3.0 code
+  statevector       – Display the statevector
+  probs             – Display probability distribution (ASCII bar chart)
+  bloch [filename]  – Generate Bloch sphere (saves to filename or bloch.png)
+  exit / quit       – Exit the REPL
+  help              – Show this help
+"""
+        print(help_text)
