@@ -1,1112 +1,932 @@
-
-
-Qcc · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QCC — Quantum Circuit Composer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<title>QCC – Quantum Learning Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#080b10;
-    --panel:#0f141c;
-    --panel-2:#141a24;
-    --panel-3:#1a2130;
-    --border:#232c3a;
-    --border-soft:#1a212c;
-    --accent:#5eead4;
-    --accent-dim:#2b6f66;
-    --accent-soft:rgba(94,234,212,.12);
-    --warm:#f0a868;
-    --warm-soft:rgba(240,168,104,.14);
-    --danger:#f2555a;
-    --danger-soft:rgba(242,85,90,.12);
-    --text:#e7edf4;
-    --text-muted:#8a97ab;
-    --text-dim:#4c5768;
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
-    --sans: 'Inter', system-ui, sans-serif;
-    --disp: 'Space Grotesk', var(--sans);
+  /* ─── Global Reset & Theme ─── */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0b0e17;
+    color: #e7edf4;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--text);
-    font-family:var(--sans);
-    font-size:14px;
-    line-height:1.5;
-    min-height:100vh;
+
+  /* ─── Top Bar ─── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    background: #0f1422;
+    border-bottom: 1px solid #1e2640;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 8px 16px;
   }
-  ::selection{background:var(--accent-soft);color:var(--accent);}
-  button{font-family:inherit;font-size:inherit;color:inherit;}
-  input,textarea{font-family:inherit;font-size:inherit;color:inherit;}
- 
-  /* ---------- Top bar ---------- */
-  .topbar{
-    display:flex;align-items:center;gap:20px;
-    padding:14px 20px;
-    border-bottom:1px solid var(--border);
-    background:linear-gradient(180deg, var(--panel), var(--bg));
-    flex-wrap:wrap;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    color: #5eead4;
+    letter-spacing: 0.3px;
   }
-  .brand{display:flex;align-items:center;gap:10px;margin-right:auto;}
-  .brand-mark{
-    width:30px;height:30px;border-radius:7px;
-    background:conic-gradient(from 220deg, var(--accent), var(--accent-dim), var(--accent));
-    position:relative;flex:none;
+  .brand small {
+    font-weight: 400;
+    font-size: 13px;
+    color: #8a97ab;
   }
-  .brand-mark::after{
-    content:"";position:absolute;inset:8px;border-radius:50%;
-    background:var(--bg);
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
-  .brand h1{font-family:var(--disp);font-size:17px;font-weight:600;margin:0;letter-spacing:.2px;}
-  .brand span{display:block;font-size:11.5px;color:var(--text-muted);margin-top:1px;}
- 
-  .field-group{display:flex;align-items:center;gap:8px;}
-  .field-group label{font-size:12px;color:var(--text-muted);white-space:nowrap;}
-  .stepper{display:flex;align-items:center;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
-  .stepper button{background:var(--panel-2);border:none;width:28px;height:28px;cursor:pointer;color:var(--text);}
-  .stepper button:hover{background:var(--panel-3);}
-  .stepper .val{width:34px;text-align:center;font-family:var(--mono);font-size:13px;background:var(--panel);height:28px;line-height:28px;border-left:1px solid var(--border);border-right:1px solid var(--border);}
-  .num-input{
-    width:78px;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
-    padding:6px 8px;font-family:var(--mono);font-size:13px;
+  .topbar-right .user-info {
+    font-size: 13px;
+    color: #b0bcdb;
   }
-  .num-input:focus{outline:none;border-color:var(--accent-dim);}
-  .btn{
-    display:inline-flex;align-items:center;gap:6px;
-    padding:7px 14px;border-radius:7px;border:1px solid var(--border);
-    background:var(--panel-2);cursor:pointer;font-size:13px;font-weight:500;
-    transition:border-color .15s, background .15s;
+  .topbar-right .user-info strong {
+    color: #e7edf4;
   }
-  .btn:hover{background:var(--panel-3);border-color:#2e3849;}
-  .btn:disabled{opacity:.45;cursor:not-allowed;}
-  .btn-icon{padding:7px 9px;}
-  .btn-primary{
-    background:var(--accent);color:#062420;border-color:var(--accent);font-weight:600;
+  .btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #2a3050;
+    background: #1a2040;
+    color: #e7edf4;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.15s;
   }
-  .btn-primary:hover{background:#7ff0da;}
-  .btn-danger{background:transparent;color:var(--danger);border-color:var(--danger-soft);}
-  .btn-danger:hover{background:var(--danger-soft);}
-  .btn-ghost{background:transparent;}
-  .btn-ghost:hover{background:var(--panel-2);}
- 
-  /* ---------- Layout ---------- */
-  .workspace{
-    display:grid;
-    grid-template-columns:248px 1fr 380px;
-    gap:1px;
-    background:var(--border);
-    min-height:calc(100vh - 61px);
+  .btn:hover {
+    background: #222a50;
+    border-color: #4a5a8a;
   }
-  @media (max-width:1100px){
-    .workspace{grid-template-columns:1fr;}
+  .btn-primary {
+    background: #5eead4;
+    border-color: #5eead4;
+    color: #062420;
+    font-weight: 600;
   }
-  .pane{background:var(--bg);display:flex;flex-direction:column;min-width:0;}
- 
-  /* ---------- Palette ---------- */
-  .palette{padding:16px;overflow-y:auto;}
-  .palette-group{margin-bottom:18px;}
-  .palette-group h3{
-    font-size:11.5px;font-weight:600;color:var(--text-muted);
-    margin:0 0 8px;text-transform:none;
+  .btn-primary:hover {
+    background: #7ff0da;
   }
-  .gate-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
-  .gate-btn{
-    aspect-ratio:1;border-radius:7px;border:1px solid var(--border);
-    background:var(--panel-2);cursor:pointer;font-family:var(--disp);
-    font-size:13px;font-weight:600;color:var(--text);
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .1s, border-color .15s, background .15s;
+  .btn-danger {
+    background: transparent;
+    border-color: #f2555a;
+    color: #f2555a;
   }
-  .gate-btn:hover{border-color:var(--accent-dim);background:var(--panel-3);}
-  .gate-btn.active{
-    background:var(--accent-soft);border-color:var(--accent);color:var(--accent);
-    box-shadow:0 0 0 1px var(--accent) inset;
+  .btn-danger:hover {
+    background: rgba(242,85,90,0.12);
   }
-  .gate-btn.measure{color:var(--warm);}
-  .gate-btn.measure.active{background:var(--warm-soft);border-color:var(--warm);color:var(--warm);}
- 
-  .qubit-select-row{padding:14px 16px;border-top:1px solid var(--border-soft);}
-  .qubit-select-row h3{font-size:11.5px;font-weight:600;color:var(--text-muted);margin:0 0 8px;}
-  .qubit-btns{display:flex;flex-wrap:wrap;gap:6px;}
-  .qbtn{
-    padding:6px 11px;border-radius:6px;border:1px solid var(--border);
-    background:var(--panel-2);cursor:pointer;font-family:var(--mono);font-size:12.5px;
+
+  /* ─── Tabs ─── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #1e2640;
+    background: #0f1422;
+    padding: 0 24px;
+    flex-shrink: 0;
   }
-  .qbtn:hover{border-color:var(--accent-dim);}
-  .qbtn.picked{background:var(--accent);color:#062420;border-color:var(--accent);font-weight:600;}
-  .qbtn:disabled{opacity:.35;cursor:not-allowed;}
- 
-  .status-line{
-    margin:0 16px 16px;padding:9px 12px;border-radius:7px;
-    background:var(--panel-2);border:1px solid var(--border-soft);
-    font-size:12.5px;color:var(--text-muted);min-height:16px;
+  .tab {
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    color: #8a97ab;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: 0.15s;
   }
-  .status-line.active{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-soft);}
- 
-  /* ---------- Canvas ---------- */
-  .canvas-pane{position:relative;}
-  .canvas-toolbar{
-    display:flex;align-items:center;gap:8px;padding:10px 16px;
-    border-bottom:1px solid var(--border-soft);flex-wrap:wrap;
+  .tab:hover { color: #e7edf4; }
+  .tab.active {
+    color: #5eead4;
+    border-bottom-color: #5eead4;
   }
-  .stat-chip{
-    font-family:var(--mono);font-size:12px;color:var(--text-muted);
-    background:var(--panel-2);border:1px solid var(--border-soft);
-    padding:4px 9px;border-radius:6px;
+
+  /* ─── Main Content ─── */
+  .main-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
-  .stat-chip b{color:var(--text);font-weight:600;}
-  .canvas-scroll{flex:1;overflow:auto;padding:24px;}
-  .diagram-empty{
-    height:100%;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    color:var(--text-dim);gap:8px;text-align:center;
+
+  /* ─── Auth Overlay ─── */
+  .auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(4,6,10,0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
   }
-  .diagram-empty b{color:var(--text-muted);font-weight:600;font-family:var(--disp);font-size:15px;}
-  svg.circuit-svg{display:block;}
-  .op-hit{cursor:pointer;}
-  .op-hit:hover .op-box{stroke:var(--danger);}
-  .op-hit:hover .op-glyph{stroke:var(--danger);}
-  .op-hit:hover .op-dot{fill:var(--danger);}
- 
-  .qasm-bar{
-    border-top:1px solid var(--border-soft);padding:12px 16px;
-    display:flex;flex-direction:column;gap:8px;
+  .auth-box {
+    background: #141a24;
+    border: 1px solid #2a3050;
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 420px;
+    width: 100%;
   }
-  .qasm-row{display:flex;gap:8px;align-items:center;}
-  .qasm-row label{font-size:11.5px;color:var(--text-muted);white-space:nowrap;}
-  .qasm-input{
-    flex:1;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
-    padding:8px 10px;font-family:var(--mono);font-size:12.5px;color:var(--accent);min-width:0;
+  .auth-box h2 {
+    margin-bottom: 6px;
+    font-size: 22px;
+    font-weight: 600;
   }
-  .qasm-input:focus{outline:none;border-color:var(--accent-dim);}
-  .qasm-actions{display:flex;gap:6px;flex-wrap:wrap;}
- 
-  /* ---------- Results ---------- */
-  .results-pane{border-left:1px solid var(--border);}
-  .tabs{display:flex;border-bottom:1px solid var(--border-soft);}
-  .tab{
-    flex:1;padding:12px 8px;text-align:center;background:none;border:none;
-    color:var(--text-muted);cursor:pointer;font-weight:600;font-size:12.5px;
-    border-bottom:2px solid transparent;
+  .auth-box p {
+    color: #8a97ab;
+    margin-bottom: 20px;
+    font-size: 14px;
   }
-  .tab:hover{color:var(--text);}
-  .tab.active{color:var(--accent);border-color:var(--accent);}
-  .tab-body{flex:1;overflow-y:auto;padding:18px;}
-  .placeholder{
-    color:var(--text-dim);text-align:center;padding:50px 20px;font-size:13px;
+  .auth-box label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #b0bcdb;
   }
-  .placeholder b{display:block;color:var(--text-muted);font-family:var(--disp);font-size:15px;margin-bottom:6px;}
- 
-  .viz-card{margin-bottom:22px;}
-  .viz-card h4{
-    display:flex;justify-content:space-between;align-items:center;
-    font-size:12.5px;font-weight:600;color:var(--text-muted);margin:0 0 8px;
+  .auth-box input {
+    width: 100%;
+    padding: 8px 12px;
+    background: #0f1422;
+    border: 1px solid #2a3050;
+    border-radius: 6px;
+    color: #e7edf4;
+    font-size: 14px;
+    margin-bottom: 14px;
   }
-  .viz-card img{width:100%;border-radius:8px;border:1px solid var(--border-soft);background:#fff;}
-  .dl-link{color:var(--accent);font-size:11.5px;text-decoration:none;font-weight:600;}
-  .dl-link:hover{text-decoration:underline;}
- 
-  .data-section{margin-bottom:22px;}
-  .data-section h4{font-size:12.5px;font-weight:600;color:var(--text-muted);margin:0 0 10px;}
-  .count-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
-  .count-label{font-family:var(--mono);font-size:12px;width:56px;color:var(--text-muted);flex:none;}
-  .count-bar-track{flex:1;background:var(--panel-2);border-radius:4px;height:16px;overflow:hidden;}
-  .count-bar-fill{height:100%;background:var(--accent);border-radius:4px;}
-  .count-val{font-family:var(--mono);font-size:11.5px;color:var(--text-muted);width:44px;text-align:right;flex:none;}
- 
-  table.sv-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
-  table.sv-table th{text-align:left;color:var(--text-muted);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--border-soft);font-size:11px;}
-  table.sv-table td{padding:6px 4px;border-bottom:1px solid var(--border-soft);vertical-align:middle;}
-  .prob-cell{display:flex;align-items:center;gap:6px;}
-  .prob-track{flex:1;height:8px;background:var(--panel-2);border-radius:3px;overflow:hidden;min-width:40px;}
-  .prob-fill{height:100%;background:var(--warm);}
- 
-  details.raw-json{margin-top:8px;}
-  details.raw-json summary{cursor:pointer;color:var(--text-muted);font-size:11.5px;}
-  details.raw-json pre{
-    background:var(--panel-2);border:1px solid var(--border-soft);border-radius:7px;
-    padding:10px;font-size:11.5px;overflow-x:auto;margin-top:6px;
+  .auth-box input:focus {
+    outline: none;
+    border-color: #5eead4;
   }
- 
-  .sdk-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
-  .sdk-pill{
-    padding:5px 10px;border-radius:999px;border:1px solid var(--border);
-    background:var(--panel-2);cursor:pointer;font-size:11.5px;color:var(--text-muted);
+  .auth-box .error {
+    color: #f2555a;
+    font-size: 13px;
+    margin-top: -8px;
+    margin-bottom: 12px;
+    display: none;
   }
-  .sdk-pill:hover{color:var(--text);}
-  .sdk-pill.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
-  .code-block-wrap{position:relative;}
-  .code-block{
-    background:#0b0f16;border:1px solid var(--border-soft);border-radius:8px;
-    padding:14px;font-family:var(--mono);font-size:12px;white-space:pre;overflow-x:auto;
-    max-height:420px;overflow-y:auto;color:#c9d4e0;
+  .auth-box .switch-link {
+    color: #5eead4;
+    cursor: pointer;
+    font-weight: 500;
   }
-  .copy-btn{
-    position:absolute;top:8px;right:8px;
+  .auth-box .switch-link:hover { text-decoration: underline; }
+  .auth-box .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
   }
- 
-  .error-banner{
-    background:var(--danger-soft);border:1px solid rgba(242,85,90,.4);color:#ffb0b3;
-    border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;
+
+  /* ─── Course List ─── */
+  .course-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
   }
-  .error-banner b{display:block;color:var(--danger);margin-bottom:4px;font-family:var(--disp);}
-  .error-banner details{margin-top:8px;}
-  .error-banner pre{white-space:pre-wrap;font-size:11px;color:#e6a5a7;margin-top:6px;}
- 
-  /* ---------- Modal ---------- */
-  .modal-overlay{
-    position:fixed;inset:0;background:rgba(4,6,10,.65);backdrop-filter:blur(2px);
-    display:none;align-items:center;justify-content:center;z-index:50;
+  .course-card {
+    background: #141a24;
+    border: 1px solid #1e2640;
+    border-radius: 8px;
+    padding: 16px;
+    transition: 0.15s;
+    cursor: pointer;
   }
-  .modal-overlay.open{display:flex;}
-  .modal{
-    width:340px;background:var(--panel);border:1px solid var(--border);border-radius:10px;
-    padding:20px;
+  .course-card:hover {
+    border-color: #4a5a8a;
   }
-  .modal h3{margin:0 0 4px;font-family:var(--disp);font-size:16px;}
-  .modal p{margin:0 0 14px;font-size:12.5px;color:var(--text-muted);}
-  .modal input[type=number], .modal textarea{
-    width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:7px;
-    padding:9px 10px;font-family:var(--mono);font-size:13px;
+  .course-card h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
   }
-  .modal textarea{min-height:90px;resize:vertical;}
-  .preset-row{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;}
-  .preset-row button{
-    flex:1;padding:6px 4px;border-radius:6px;border:1px solid var(--border);
-    background:var(--panel-2);cursor:pointer;font-family:var(--mono);font-size:11.5px;min-width:60px;
+  .course-card p {
+    color: #8a97ab;
+    font-size: 13px;
   }
-  .preset-row button:hover{border-color:var(--accent-dim);}
-  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
-  .modal-error{color:var(--danger);font-size:11.5px;margin-top:8px;min-height:14px;}
- 
-  /* ---------- Toasts ---------- */
-  .toast-container{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;align-items:center;}
-  .toast{
-    background:var(--panel-3);border:1px solid var(--border);color:var(--text);
-    padding:9px 16px;border-radius:8px;font-size:12.5px;opacity:0;transform:translateY(6px);
-    transition:opacity .2s, transform .2s;box-shadow:0 6px 20px rgba(0,0,0,.4);
+  .course-card .badge {
+    display: inline-block;
+    background: #1e2640;
+    color: #b0bcdb;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-top: 8px;
   }
-  .toast.show{opacity:1;transform:translateY(0);}
-  .toast.err{border-color:rgba(242,85,90,.5);color:#ffb0b3;}
- 
-  ::-webkit-scrollbar{width:9px;height:9px;}
-  ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:#232c3a;border-radius:5px;}
-  ::-webkit-scrollbar-thumb:hover{background:#2e3849;}
- 
-  :focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+
+  /* ─── Lesson View ─── */
+  .lesson-view {
+    max-width: 800px;
+  }
+  .lesson-view h2 {
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .lesson-view .meta {
+    color: #8a97ab;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .content-block {
+    background: #141a24;
+    border: 1px solid #1e2640;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .content-block .block-type {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #4a5a8a;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .content-block .block-text {
+    white-space: pre-wrap;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .content-block .block-video iframe {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border: none;
+    border-radius: 6px;
+  }
+  .complete-btn {
+    margin-top: 16px;
+  }
+
+  /* ─── Dashboard ─── */
+  .dashboard-item {
+    background: #141a24;
+    border: 1px solid #1e2640;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .dashboard-item .info { flex: 1; }
+  .dashboard-item .progress-bar {
+    width: 140px;
+    height: 8px;
+    background: #1e2640;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .dashboard-item .progress-bar .fill {
+    height: 100%;
+    background: #5eead4;
+    border-radius: 4px;
+  }
+  .dashboard-item .progress-text {
+    font-weight: 600;
+    font-size: 15px;
+    margin-left: 12px;
+  }
+
+  /* ─── Circuit Builder ─── (reused from existing frontend2.html) */
+  .circuit-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .gate-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .gate-btn {
+    padding: 6px 14px;
+    background: #141a24;
+    border: 1px solid #2a3050;
+    border-radius: 4px;
+    color: #e7edf4;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 13px;
+    transition: 0.1s;
+  }
+  .gate-btn:hover { background: #1e2640; }
+  .gate-btn.active { border-color: #5eead4; background: #1a2240; color: #5eead4; }
+  .qubit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .qubit-btn {
+    padding: 4px 12px;
+    background: #141a24;
+    border: 1px solid #2a3050;
+    border-radius: 4px;
+    color: #b0bcdb;
+    cursor: pointer;
+  }
+  .qubit-btn.selected { background: #5eead4; color: #062420; border-color: #5eead4; }
+  .qasm-field {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .qasm-field input {
+    flex: 1;
+    background: #0f1422;
+    border: 1px solid #2a3050;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #e7edf4;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-width: 200px;
+  }
+  .results-area {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .results-area img { width: 100%; border-radius: 8px; border: 1px solid #1e2640; background: #fff; }
+  .results-area .code-snippet {
+    background: #0f1422;
+    border: 1px solid #1e2640;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  @media (max-width: 700px) { .results-area { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
- 
-  <div class="topbar">
-    <div class="brand">
-      <div class="brand-mark"></div>
-      <div>
-        <h1>Quantum Circuit Composer</h1>
-        <span>QASM-D · 11 SDK targets · live simulation</span>
-      </div>
-    </div>
- 
-    <div class="field-group">
-      <label>Qubits</label>
-      <div class="stepper">
-        <button id="qubitDec" title="Remove last qubit">−</button>
-        <div class="val" id="qubitVal">2</div>
-        <button id="qubitInc" title="Add qubit">+</button>
-      </div>
-    </div>
- 
-    <div class="field-group">
-      <label>Shots</label>
-      <input id="shotsInput" class="num-input" type="number" min="1" max="200000" value="1024">
-    </div>
- 
-    <div class="field-group">
-      <button class="btn btn-icon" id="undoBtn" title="Undo (Ctrl+Z)">↶</button>
-      <button class="btn btn-icon" id="redoBtn" title="Redo (Ctrl+Shift+Z)">↷</button>
-    </div>
- 
-    <button class="btn btn-danger" id="clearBtn">Clear circuit</button>
-    <button class="btn btn-primary" id="runBtn">▶ Run circuit</button>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="brand">
+    ⚛ QCC <small>Quantum Learning Platform</small>
   </div>
- 
-  <div class="workspace">
-    <!-- PALETTE -->
-    <div class="pane palette-pane">
-      <div class="palette">
-        <div class="palette-group">
-          <h3>Pauli &amp; identity</h3>
-          <div class="gate-grid">
-            <button class="gate-btn" data-gate="X" title="Pauli-X">X</button>
-            <button class="gate-btn" data-gate="Y" title="Pauli-Y">Y</button>
-            <button class="gate-btn" data-gate="Z" title="Pauli-Z">Z</button>
-            <button class="gate-btn" data-gate="I" title="Identity">I</button>
-          </div>
-        </div>
-        <div class="palette-group">
-          <h3>Clifford &amp; phase</h3>
-          <div class="gate-grid">
-            <button class="gate-btn" data-gate="H" title="Hadamard">H</button>
-            <button class="gate-btn" data-gate="S" title="S (√Z)">S</button>
-            <button class="gate-btn" data-gate="T" title="T (√S)">T</button>
-            <button class="gate-btn" data-gate="SX" title="√X">√X</button>
-          </div>
-        </div>
-        <div class="palette-group">
-          <h3>Rotation</h3>
-          <div class="gate-grid">
-            <button class="gate-btn" data-gate="RX" title="Rotate X(θ)">RX</button>
-            <button class="gate-btn" data-gate="RY" title="Rotate Y(θ)">RY</button>
-            <button class="gate-btn" data-gate="RZ" title="Rotate Z(θ)">RZ</button>
-          </div>
-        </div>
-        <div class="palette-group">
-          <h3>Entangling</h3>
-          <div class="gate-grid">
-            <button class="gate-btn" data-gate="CX" title="Controlled-X (CNOT)">CX</button>
-            <button class="gate-btn" data-gate="CZ" title="Controlled-Z">CZ</button>
-            <button class="gate-btn" data-gate="SWAP" title="Swap">⇄</button>
-            <button class="gate-btn" data-gate="CCX" title="Toffoli">CCX</button>
-          </div>
-        </div>
-        <div class="palette-group">
-          <h3>Measurement</h3>
-          <div class="gate-grid">
-            <button class="gate-btn measure" data-gate="MEASURE" title="Measure to classical bit">M</button>
-          </div>
-        </div>
-      </div>
- 
-      <div class="qubit-select-row">
-        <h3>Apply to</h3>
-        <div class="qubit-btns" id="qubitBtns"></div>
-      </div>
-      <div class="status-line" id="statusLine">Select a gate, then a qubit.</div>
+  <div class="topbar-right" id="topbarRight">
+    <span class="user-info" id="userInfo">Loading...</span>
+    <button class="btn btn-danger" id="logoutBtn" style="display:none;">Logout</button>
+  </div>
+</div>
+
+<!-- ========== TABS ========== -->
+<div class="tabs" id="tabsContainer">
+  <button class="tab active" data-tab="courses">📚 Courses</button>
+  <button class="tab" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab" data-tab="composer">🔬 Circuit Composer</button>
+</div>
+
+<!-- ========== MAIN CONTENT ========== -->
+<div class="main-content" id="mainContent">
+  <!-- Rendered by JavaScript -->
+</div>
+
+<!-- ========== AUTH OVERLAY ========== -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <h2 id="authTitle">Login</h2>
+    <p id="authSub">Enter your credentials to access the platform.</p>
+    <div id="authError" class="error"></div>
+    <label for="authEmail">Email</label>
+    <input type="email" id="authEmail" placeholder="user@example.com">
+    <label for="authPassword">Password</label>
+    <input type="password" id="authPassword" placeholder="••••••••">
+    <div id="authExtra" style="display:none;">
+      <label for="authFullName">Full Name</label>
+      <input type="text" id="authFullName" placeholder="Your name">
     </div>
- 
-    <!-- CANVAS -->
-    <div class="pane canvas-pane">
-      <div class="canvas-toolbar">
-        <span class="stat-chip">Qubits <b id="statQubits">2</b></span>
-        <span class="stat-chip">Classical <b id="statClassical">0</b></span>
-        <span class="stat-chip">Depth <b id="statDepth">0</b></span>
-        <span class="stat-chip">Gates <b id="statGates">0</b></span>
-      </div>
-      <div class="canvas-scroll" id="canvasScroll">
-        <div class="diagram-empty" id="diagramEmpty">
-          <b>Empty circuit</b>
-          <span>Pick a gate on the left, then a qubit to place it.</span>
-        </div>
-      </div>
-      <div class="qasm-bar">
-        <div class="qasm-row">
-          <label>QASM-D</label>
-          <input id="qasmField" class="qasm-input" spellcheck="false" placeholder="2#131#2...">
-          <div class="qasm-actions">
-            <button class="btn btn-ghost btn-icon" id="copyQasmBtn" title="Copy string">⧉</button>
-            <button class="btn btn-ghost" id="applyQasmBtn" title="Parse edited string into circuit">Apply</button>
-            <button class="btn btn-ghost" id="exportJsonBtn" title="Download circuit as JSON">Export</button>
-            <button class="btn btn-ghost" id="importJsonBtn" title="Load circuit from JSON">Import</button>
-          </div>
-        </div>
-      </div>
-    </div>
- 
-    <!-- RESULTS -->
-    <div class="pane results-pane">
-      <div class="tabs">
-        <button class="tab active" data-tab="visualize">Visualize</button>
-        <button class="tab" data-tab="data">Data</button>
-        <button class="tab" data-tab="code">Code</button>
-      </div>
-      <div class="tab-body" id="tabBody">
-        <div class="placeholder">
-          <b>No results yet</b>
-          Build a circuit and press Run to simulate it and generate code for 11 SDKs.
-        </div>
-      </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="authSubmit">Login</button>
+      <button class="btn" id="authSwitch">Switch to Register</button>
     </div>
   </div>
- 
-  <!-- Angle modal -->
-  <div class="modal-overlay" id="angleModalOverlay">
-    <div class="modal">
-      <h3 id="angleModalTitle">Rotation angle</h3>
-      <p>Enter θ in radians (encoded to 2 decimal places).</p>
-      <input type="number" id="angleInput" step="0.01" value="1.5708">
-      <div class="preset-row">
-        <button data-val="0.7854">π/4</button>
-        <button data-val="1.5708">π/2</button>
-        <button data-val="3.1416">π</button>
-        <button data-val="4.7124">3π/2</button>
-      </div>
-      <div class="modal-error" id="angleModalError"></div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" id="angleCancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="angleOkBtn">Continue</button>
-      </div>
-    </div>
-  </div>
- 
-  <!-- Import JSON modal -->
-  <div class="modal-overlay" id="importModalOverlay">
-    <div class="modal">
-      <h3>Import circuit</h3>
-      <p>Paste a circuit JSON previously exported from QCC.</p>
-      <textarea id="importTextarea" placeholder='{"qubitCount":2,"ops":[...]}'></textarea>
-      <div class="modal-error" id="importModalError"></div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" id="importCancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="importOkBtn">Load</button>
-      </div>
-    </div>
-  </div>
- 
-  <div class="toast-container" id="toastContainer"></div>
- 
+</div>
+
 <script>
-(() => {
-  "use strict";
- 
-  // ================= Gate protocol (matches backend QASM-D parser exactly) =================
-  const GATES = {
-    H:   {arity:1, code:'1', label:'H',    name:'Hadamard'},
-    X:   {arity:1, code:'3', label:'X',    name:'Pauli-X'},
-    Y:   {arity:1, code:'4', label:'Y',    name:'Pauli-Y'},
-    Z:   {arity:1, code:'5', label:'Z',    name:'Pauli-Z'},
-    S:   {arity:1, code:'J', label:'S',    name:'S (phase)'},
-    T:   {arity:1, code:'L', label:'T',    name:'T (π/8)'},
-    SX:  {arity:1, code:'N', label:'√X',   name:'Square-root X'},
-    I:   {arity:1, code:'I', label:'I',    name:'Identity'},
-    RX:  {arity:1, code:'8', label:'RX',   name:'Rotate X', param:true},
-    RY:  {arity:1, code:'9', label:'RY',   name:'Rotate Y', param:true},
-    RZ:  {arity:1, code:'D', label:'RZ',   name:'Rotate Z', param:true},
-    CX:  {arity:2, code:'2', label:'CX',   name:'Controlled-X (CNOT)'},
-    CZ:  {arity:2, code:'F', label:'CZ',   name:'Controlled-Z'},
-    SWAP:{arity:2, code:'7', label:'SWAP', name:'Swap'},
-    CCX: {arity:3, code:'G', label:'CCX',  name:'Toffoli'},
-    MEASURE:{arity:1, code:'A', label:'M', name:'Measurement'},
+// =====================================================================
+// QCC Frontend – Full Application
+// =====================================================================
+
+const API_BASE = 'http://localhost:8000/api';
+
+// ─── State ──────────────────────────────────────────────────────────
+let currentUser = null;
+let accessToken = localStorage.getItem('qcc_token') || null;
+let currentTab = 'courses';
+let courses = [];
+let currentCourse = null;
+let currentLesson = null;
+
+// ─── DOM refs ──────────────────────────────────────────────────────
+const main = document.getElementById('mainContent');
+const authOverlay = document.getElementById('authOverlay');
+const authTitle = document.getElementById('authTitle');
+const authSub = document.getElementById('authSub');
+const authError = document.getElementById('authError');
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authFullName = document.getElementById('authFullName');
+const authExtra = document.getElementById('authExtra');
+const authSubmit = document.getElementById('authSubmit');
+const authSwitch = document.getElementById('authSwitch');
+const userInfo = document.getElementById('userInfo');
+const logoutBtn = document.getElementById('logoutBtn');
+const tabsContainer = document.getElementById('tabsContainer');
+
+let isLoginMode = true;
+
+// ─── Utilities ──────────────────────────────────────────────────────
+function setAuthHeader(headers = {}) {
+  if (accessToken) {
+    headers['Authorization'] = 'Bearer ' + accessToken;
+  }
+  return headers;
+}
+
+async function apiFetch(endpoint, options = {}) {
+  const url = API_BASE + endpoint;
+  const headers = setAuthHeader(options.headers || {});
+  headers['Content-Type'] = options.contentType || 'application/json';
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    // Unauthorized – clear token and show login
+    localStorage.removeItem('qcc_token');
+    accessToken = null;
+    currentUser = null;
+    showAuth();
+    return null;
+  }
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+function showAuth() {
+  authOverlay.style.display = 'flex';
+  main.innerHTML = '';
+}
+
+function hideAuth() {
+  authOverlay.style.display = 'none';
+}
+
+// ─── Authentication ────────────────────────────────────────────────
+async function login(email, password) {
+  const formData = new URLSearchParams();
+  formData.append('username', email);
+  formData.append('password', password);
+  const res = await fetch(API_BASE + '/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Login failed');
+  }
+  const data = await res.json();
+  accessToken = data.access_token;
+  localStorage.setItem('qcc_token', accessToken);
+  await loadUser();
+  hideAuth();
+  renderTab();
+}
+
+async function register(email, password, fullName) {
+  const res = await fetch(API_BASE + '/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, full_name: fullName })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || 'Registration failed');
+  }
+  // After registration, log in automatically
+  await login(email, password);
+}
+
+async function loadUser() {
+  if (!accessToken) { currentUser = null; return; }
+  try {
+    const data = await apiFetch('/auth/me');
+    if (data) {
+      currentUser = data;
+      userInfo.innerHTML = `<strong>${currentUser.full_name || currentUser.email}</strong> (${currentUser.role})`;
+      logoutBtn.style.display = 'inline-block';
+    } else {
+      currentUser = null;
+      userInfo.textContent = 'Not logged in';
+      logoutBtn.style.display = 'none';
+    }
+  } catch {
+    currentUser = null;
+    userInfo.textContent = 'Not logged in';
+    logoutBtn.style.display = 'none';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('qcc_token');
+  accessToken = null;
+  currentUser = null;
+  userInfo.textContent = 'Not logged in';
+  logoutBtn.style.display = 'none';
+  showAuth();
+}
+
+// ─── Routing / Tabs ────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderTab();
+}
+
+async function renderTab() {
+  if (!currentUser) { showAuth(); return; }
+  switch (currentTab) {
+    case 'courses': await renderCourses(); break;
+    case 'dashboard': await renderDashboard(); break;
+    case 'composer': renderComposer(); break;
+    default: renderCourses();
+  }
+}
+
+// ─── Courses Tab ────────────────────────────────────────────────────
+async function renderCourses() {
+  const data = await apiFetch('/content/courses?published_only=false');
+  if (!data) return;
+  courses = data;
+  let html = '<h2>📚 Available Courses</h2><div class="course-grid">';
+  for (const c of courses) {
+    const enrolled = currentUser.courses_enrolled && currentUser.courses_enrolled.some(e => e.id === c.id);
+    html += `
+      <div class="course-card" data-course-id="${c.id}">
+        <h3>${c.title}</h3>
+        <p>${c.description || ''}</p>
+        <div class="badge">${c.is_published ? 'Published' : 'Draft'} · ${c.modules?.length || 0} modules</div>
+        <div style="margin-top:8px;">
+          ${enrolled ? '<span style="color:#5eead4;">✅ Enrolled</span>' :
+            `<button class="btn btn-primary enroll-btn" data-course-id="${c.id}">Enroll</button>`}
+          <button class="btn view-course-btn" data-course-id="${c.id}">View</button>
+        </div>
+      </div>
+    `;
+  }
+  html += '</div>';
+  main.innerHTML = html;
+
+  // Event listeners
+  document.querySelectorAll('.enroll-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = parseInt(btn.dataset.courseId);
+      await apiFetch('/content/enroll', { method: 'POST', body: JSON.stringify({ course_id: id }) });
+      await loadUser();
+      renderTab();
+    });
+  });
+  document.querySelectorAll('.view-course-btn').forEach(btn => {
+    btn.addEventListener('click', () => viewCourse(parseInt(btn.dataset.courseId)));
+  });
+}
+
+async function viewCourse(courseId) {
+  const data = await apiFetch(`/content/courses/${courseId}`);
+  if (!data) return;
+  currentCourse = data;
+  let html = `<button class="btn" onclick="renderCourses()">← Back to courses</button>
+              <h2>${data.title}</h2><p>${data.description || ''}</p>`;
+  for (const mod of data.modules || []) {
+    html += `<h3 style="margin-top:16px;">${mod.title}</h3>`;
+    for (const lesson of mod.lessons || []) {
+      const completed = currentUser.progress && currentUser.progress.some(p => p.lesson_id === lesson.id && p.completed);
+      html += `
+        <div style="background:#141a24;border:1px solid #1e2640;border-radius:6px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+          <span>${lesson.title} ${completed ? '✅' : ''}</span>
+          <button class="btn view-lesson-btn" data-lesson-id="${lesson.id}">View</button>
+        </div>
+      `;
+    }
+  }
+  main.innerHTML = html;
+  document.querySelectorAll('.view-lesson-btn').forEach(btn => {
+    btn.addEventListener('click', () => viewLesson(parseInt(btn.dataset.lessonId)));
+  });
+}
+
+async function viewLesson(lessonId) {
+  // Find lesson in currentCourse
+  let lesson = null;
+  for (const mod of currentCourse.modules || []) {
+    const found = mod.lessons.find(l => l.id === lessonId);
+    if (found) { lesson = found; break; }
+  }
+  if (!lesson) { alert('Lesson not found'); return; }
+  currentLesson = lesson;
+  let html = `<button class="btn" onclick="viewCourse(${currentCourse.id})">← Back to course</button>
+              <div class="lesson-view">
+                <h2>${lesson.title}</h2>
+                <div class="meta">${lesson.description || ''}</div>`;
+  for (const block of lesson.content_blocks || []) {
+    html += `<div class="content-block">`;
+    html += `<div class="block-type">${block.content_type}</div>`;
+    if (block.content_type === 'text') {
+      html += `<div class="block-text">${block.data.text || ''}</div>`;
+    } else if (block.content_type === 'video') {
+      html += `<div class="block-video"><iframe src="${block.data.url || ''}" allowfullscreen></iframe></div>`;
+    } else if (block.content_type === 'circuit') {
+      html += `<div><pre style="background:#0f1422;padding:10px;border-radius:6px;">${block.data.qasm_d || ''}</pre></div>`;
+    } else {
+      html += `<pre>${JSON.stringify(block.data, null, 2)}</pre>`;
+    }
+    html += `</div>`;
+  }
+  // Check if completed
+  const completed = currentUser.progress && currentUser.progress.some(p => p.lesson_id === lesson.id && p.completed);
+  html += `
+    <div class="complete-btn">
+      ${completed ? '✅ Completed' : `<button class="btn btn-primary" id="completeLessonBtn">Mark as Complete</button>`}
+    </div>
+  `;
+  html += '</div>';
+  main.innerHTML = html;
+  document.getElementById('completeLessonBtn')?.addEventListener('click', async () => {
+    await apiFetch(`/progress/lesson/${lesson.id}/complete`, { method: 'POST' });
+    await loadUser();
+    viewLesson(lesson.id); // refresh
+  });
+}
+
+// ─── Dashboard Tab ──────────────────────────────────────────────────
+async function renderDashboard() {
+  const data = await apiFetch('/progress/dashboard');
+  if (!data) return;
+  let html = '<h2>📊 Your Progress</h2>';
+  if (!data.length) html += '<p>You are not enrolled in any courses yet.</p>';
+  for (const item of data) {
+    html += `
+      <div class="dashboard-item">
+        <div class="info">
+          <strong>${item.course_title}</strong>
+          <div style="font-size:13px;color:#8a97ab;">${item.completed_lessons}/${item.total_lessons} lessons</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="progress-bar"><div class="fill" style="width:${item.progress_percentage}%;"></div></div>
+          <span class="progress-text">${item.progress_percentage}%</span>
+        </div>
+      </div>
+    `;
+  }
+  main.innerHTML = html;
+}
+
+// ─── Circuit Composer Tab ──────────────────────────────────────────
+function renderComposer() {
+  // This reuses the circuit builder from the original frontend2.html
+  // but we need to inject it; we'll build a minimal but functional version.
+  // For simplicity, we'll keep the same gate palette, qubit selection,
+  // QASM-D field, run button, and results.
+  // We'll copy the logic from the previous frontend2.html but adapt API calls.
+  // However, to avoid duplication, we'll embed the full builder code here.
+  // Since this is a large chunk, we'll use a template literal.
+
+  const builderHtml = `
+    <div class="circuit-builder">
+      <h2>🔬 Quantum Circuit Composer</h2>
+      <div class="gate-palette">
+        ${['H','X','Y','Z','S','T','SX','RX','RY','RZ','CX','CZ','SWAP','CCX','I','MEASURE'].map(g => `
+          <button class="gate-btn" data-gate="${g}">${g}</button>
+        `).join('')}
+      </div>
+      <div>
+        <strong>Qubits:</strong>
+        <div class="qubit-row" id="qubitRow">
+          ${Array.from({length:5}, (_,i) => `<button class="qubit-btn" data-qubit="${i}">q${i}</button>`).join('')}
+        </div>
+        <button class="btn" id="addQubit">+ Add qubit</button>
+        <button class="btn" id="removeQubit">- Remove qubit</button>
+      </div>
+      <div class="qasm-field">
+        <input id="qasmInput" placeholder="QASM-D string will appear here" readonly>
+        <button class="btn btn-primary" id="runCircuitBtn">▶ Run</button>
+        <button class="btn" id="clearCircuitBtn">Clear</button>
+      </div>
+      <div id="resultsArea" class="results-area"></div>
+    </div>
+  `;
+  main.innerHTML = builderHtml;
+
+  // --- Circuit builder logic (reused) ---
+  let selectedGate = null;
+  let selectedQubits = [];
+  let qubitCount = 5;
+  let qasmString = '';
+
+  const gateMap = {
+    'H': { arity:1, code:'1' },
+    'X': { arity:1, code:'3' },
+    'Y': { arity:1, code:'4' },
+    'Z': { arity:1, code:'5' },
+    'S': { arity:1, code:'J' },
+    'T': { arity:1, code:'L' },
+    'SX': { arity:1, code:'N' },
+    'RX': { arity:1, code:'8', param:true },
+    'RY': { arity:1, code:'9', param:true },
+    'RZ': { arity:1, code:'D', param:true },
+    'CX': { arity:2, code:'2' },
+    'CZ': { arity:2, code:'F' },
+    'SWAP': { arity:2, code:'7' },
+    'CCX': { arity:3, code:'G' },
+    'I': { arity:1, code:'I' },
+    'MEASURE': { arity:1, code:'A' },
   };
-  const CODE_TO_GATE = Object.fromEntries(Object.entries(GATES).map(([k,g]) => [g.code, k]));
- 
-  const SDK_LABELS = {
-    qiskit:'Qiskit', qasm3:'OpenQASM 3', cirq:'Cirq', pennylane:'PennyLane',
-    braket:'Amazon Braket', pytket:'pytket', stim:'Stim', cudaq:'CUDA-Q',
-    azure:'Azure Q#', tensorcircuit:'TensorCircuit', myqlm:'myQLM',
-  };
- 
-  let apiBase = 'http://127.0.0.1:8000';
- 
-  // ================= State =================
-  let state = { qubitCount: 2, ops: [] };
-  let history = [];
-  let redoStack = [];
-  let uidN = 0;
-  const uid = () => 'g' + (uidN++);
- 
-  let toolGate = null;
-  let toolParam = null;
-  let pendingQubits = [];
- 
-  let lastResult = null;
-  let activeSdk = 'qiskit';
-  let activeTab = 'visualize';
- 
-  // ================= DOM refs =================
-  const $ = (id) => document.getElementById(id);
-  const qubitVal = $('qubitVal');
-  const qubitBtns = $('qubitBtns');
-  const statusLine = $('statusLine');
-  const canvasScroll = $('canvasScroll');
-  const diagramEmpty = $('diagramEmpty');
-  const qasmField = $('qasmField');
-  const statQubits = $('statQubits');
-  const statClassical = $('statClassical');
-  const statDepth = $('statDepth');
-  const statGates = $('statGates');
-  const tabBody = $('tabBody');
-  const toastContainer = $('toastContainer');
- 
-  // ================= Helpers: protocol =================
-  function buildQasmD(qubitCount, ops) {
-    const tokens = [String(qubitCount)];
-    for (const op of ops) {
-      const g = GATES[op.type];
-      let token = g.code;
-      if (g.param) {
-        const q = op.qubits[0] + 1;
-        const angleInt = Math.round(op.param * 100);
-        const angleStr = String(angleInt).padStart(4, '0');
-        token += q.toString() + angleStr;
-      } else {
-        token += op.qubits.map(q => q + 1).join('');
-      }
-      tokens.push(token);
-    }
-    return tokens.join('#');
+
+  function updateQubitButtons() {
+    const row = document.getElementById('qubitRow');
+    row.innerHTML = Array.from({length:qubitCount}, (_,i) =>
+      `<button class="qubit-btn" data-qubit="${i}">q${i}</button>`
+    ).join('');
+    // Re-bind qubit clicks
+    document.querySelectorAll('.qubit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const q = parseInt(btn.dataset.qubit);
+        if (!selectedGate) return;
+        const info = gateMap[selectedGate];
+        if (!info) return;
+        if (selectedQubits.includes(q)) return;
+        selectedQubits.push(q);
+        document.querySelectorAll('.qubit-btn').forEach(b => {
+          b.classList.toggle('selected', selectedQubits.includes(parseInt(b.dataset.qubit)));
+        });
+        if (selectedQubits.length === info.arity) {
+          // Build token
+          const code = info.code;
+          let token = '';
+          if (info.param) {
+            const angle = parseFloat(prompt('Enter angle (radians):', '1.5708')) || 0;
+            const angleInt = Math.round(angle * 100);
+            const angleStr = String(angleInt).padStart(4, '0');
+            const qstr = (selectedQubits[0] + 1).toString();
+            token = code + qstr + angleStr;
+          } else {
+            const qstr = selectedQubits.map(q => (q+1).toString()).join('');
+            token = code + qstr;
+          }
+          if (qasmString === '') {
+            qasmString = qubitCount.toString() + '#' + token;
+          } else {
+            qasmString += '#' + token;
+          }
+          document.getElementById('qasmInput').value = qasmString;
+          selectedQubits = [];
+          document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
+          document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('active'));
+          selectedGate = null;
+        }
+      });
+    });
   }
- 
-  function parseQasmD(str) {
-    const parts = str.trim().split('#').filter(p => p.length > 0);
-    if (parts.length === 0) throw new Error('Empty QASM-D string.');
-    const qubitCount = parseInt(parts[0], 10);
-    if (!Number.isInteger(qubitCount) || qubitCount < 1) {
-      throw new Error(`Invalid qubit count "${parts[0]}".`);
-    }
-    const ops = [];
-    for (let i = 1; i < parts.length; i++) {
-      const tok = parts[i];
-      const codeChar = tok[0];
-      const type = CODE_TO_GATE[codeChar];
-      if (!type) throw new Error(`Unknown gate code "${codeChar}" in token "${tok}".`);
-      const g = GATES[type];
-      if (g.param) {
-        if (tok.length < 6) throw new Error(`Malformed rotation token "${tok}".`);
-        const q = parseInt(tok[1], 10) - 1;
-        const angle = parseInt(tok.slice(2), 10) / 100;
-        ops.push({ id: uid(), type, qubits: [q], param: angle });
-      } else {
-        const qs = tok.slice(1).split('').map(c => parseInt(c, 10) - 1);
-        if (qs.length !== g.arity) throw new Error(`Token "${tok}" expects ${g.arity} qubit(s), got ${qs.length}.`);
-        ops.push({ id: uid(), type, qubits: qs, param: null });
-      }
-    }
-    for (const op of ops) {
-      for (const q of op.qubits) {
-        if (q < 0 || q >= qubitCount) throw new Error(`Gate references qubit ${q}, outside 0..${qubitCount - 1}.`);
-      }
-    }
-    return { qubitCount, ops };
-  }
- 
-  function computeColumns(qubitCount, ops) {
-    const last = new Array(qubitCount).fill(-1);
-    const cols = [];
-    for (const op of ops) {
-      let col = 0;
-      for (const q of op.qubits) col = Math.max(col, last[q] + 1);
-      for (const q of op.qubits) last[q] = col;
-      cols.push(col);
-    }
-    return cols;
-  }
- 
-  // ================= History =================
-  function pushHistory() {
-    history.push(JSON.stringify(state));
-    if (history.length > 100) history.shift();
-    redoStack = [];
-  }
-  function undo() {
-    if (!history.length) { toast('Nothing to undo.'); return; }
-    redoStack.push(JSON.stringify(state));
-    state = JSON.parse(history.pop());
-    renderAll();
-  }
-  function redo() {
-    if (!redoStack.length) { toast('Nothing to redo.'); return; }
-    history.push(JSON.stringify(state));
-    state = JSON.parse(redoStack.pop());
-    renderAll();
-  }
- 
-  // ================= Toasts =================
-  function toast(msg, kind) {
-    const el = document.createElement('div');
-    el.className = 'toast' + (kind === 'err' ? ' err' : '');
-    el.textContent = msg;
-    toastContainer.appendChild(el);
-    requestAnimationFrame(() => el.classList.add('show'));
-    setTimeout(() => {
-      el.classList.remove('show');
-      setTimeout(() => el.remove(), 250);
-    }, 2200);
-  }
- 
-  // ================= Gate tool selection =================
-  function setStatus(msg, active) {
-    statusLine.textContent = msg;
-    statusLine.classList.toggle('active', !!active);
-  }
- 
-  function clearTool() {
-    toolGate = null;
-    toolParam = null;
-    pendingQubits = [];
-    document.querySelectorAll('.gate-btn.active').forEach(b => b.classList.remove('active'));
-    renderQubitButtons();
-  }
- 
+
+  // Gate selection
   document.querySelectorAll('.gate-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const key = btn.dataset.gate;
-      const g = GATES[key];
-      if (g.param) {
-        openAngleModal(key, (angle) => {
-          toolGate = key; toolParam = angle; pendingQubits = [];
-          document.querySelectorAll('.gate-btn.active').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          setStatus(`${g.label}(${angle.toFixed(4)}) — pick 1 qubit.`, true);
-          renderQubitButtons();
-        });
-      } else {
-        toolGate = key; toolParam = null; pendingQubits = [];
-        document.querySelectorAll('.gate-btn.active').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        setStatus(`${g.label} — pick ${g.arity} qubit${g.arity > 1 ? 's' : ''}.`, true);
-        renderQubitButtons();
-      }
+      document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedGate = btn.dataset.gate;
+      selectedQubits = [];
+      document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
     });
   });
- 
-  function renderQubitButtons() {
-    qubitBtns.innerHTML = '';
-    for (let i = 0; i < state.qubitCount; i++) {
-      const b = document.createElement('button');
-      b.className = 'qbtn';
-      b.textContent = 'q' + i;
-      if (pendingQubits.includes(i)) b.classList.add('picked');
-      b.disabled = !toolGate;
-      b.addEventListener('click', () => handleQubitClick(i));
-      qubitBtns.appendChild(b);
-    }
-  }
- 
-  function handleQubitClick(i) {
-    if (!toolGate) { setStatus('Choose a gate first.'); return; }
-    if (pendingQubits.includes(i)) return;
-    pendingQubits.push(i);
-    const g = GATES[toolGate];
-    if (pendingQubits.length < g.arity) {
-      renderQubitButtons();
-      setStatus(`${g.label} — picked ${pendingQubits.length}/${g.arity}. Pick ${g.arity - pendingQubits.length} more.`, true);
-      return;
-    }
-    pushHistory();
-    state.ops.push({ id: uid(), type: toolGate, qubits: [...pendingQubits], param: toolParam });
-    clearTool();
-    setStatus('Ready. Select a gate, then a qubit.');
-    renderAll();
-  }
- 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && toolGate) {
-      clearTool();
-      setStatus('Ready. Select a gate, then a qubit.');
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-      e.preventDefault();
-      if (e.shiftKey) redo(); else undo();
-    }
+
+  // Qubit controls
+  document.getElementById('addQubit').addEventListener('click', () => {
+    qubitCount++;
+    updateQubitButtons();
   });
- 
-  // ================= Qubit count =================
-  $('qubitInc').addEventListener('click', () => {
-    pushHistory();
-    state.qubitCount++;
-    renderAll();
+  document.getElementById('removeQubit').addEventListener('click', () => {
+    if (qubitCount > 1) qubitCount--;
+    updateQubitButtons();
   });
-  $('qubitDec').addEventListener('click', () => {
-    if (state.qubitCount <= 1) { toast('A circuit needs at least 1 qubit.'); return; }
-    pushHistory();
-    const removedIdx = state.qubitCount - 1;
-    const before = state.ops.length;
-    state.ops = state.ops.filter(op => !op.qubits.includes(removedIdx));
-    const removed = before - state.ops.length;
-    state.qubitCount--;
-    if (removed > 0) toast(`Removed ${removed} gate${removed > 1 ? 's' : ''} on q${removedIdx}.`);
-    renderAll();
+
+  // Clear
+  document.getElementById('clearCircuitBtn').addEventListener('click', () => {
+    qasmString = '';
+    document.getElementById('qasmInput').value = '';
+    document.getElementById('resultsArea').innerHTML = '';
+    selectedGate = null;
+    selectedQubits = [];
+    document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
   });
- 
-  $('undoBtn').addEventListener('click', undo);
-  $('redoBtn').addEventListener('click', redo);
-  $('clearBtn').addEventListener('click', () => {
-    if (!state.ops.length) return;
-    pushHistory();
-    state.ops = [];
-    clearTool();
-    renderAll();
-  });
- 
-  // ================= Diagram rendering =================
-  const CELL_W = 78, CELL_H = 64, LEFT_W = 60, TOP_PAD = 26, BOTTOM_PAD = 26;
- 
-  function gateFill(type) { return type === 'MEASURE' ? 'var(--warm)' : 'var(--accent)'; }
- 
-  function renderDiagram() {
-    const { qubitCount, ops } = state;
-    const cols = computeColumns(qubitCount, ops);
-    const maxCol = cols.length ? Math.max(...cols) : -1;
-    const numCols = Math.max(4, maxCol + 2);
- 
-    statQubits.textContent = qubitCount;
-    statClassical.textContent = qubitCount;
-    statDepth.textContent = maxCol + 1;
-    statGates.textContent = ops.length;
- 
-    if (!ops.length) {
-      diagramEmpty.style.display = 'flex';
+
+  // Run
+  document.getElementById('runCircuitBtn').addEventListener('click', async () => {
+    const qasm = document.getElementById('qasmInput').value.trim();
+    if (!qasm) { alert('Circuit is empty.'); return; }
+    // Ensure it ends with 00 if not
+    let fullQasm = qasm;
+    if (!fullQasm.endsWith('00')) fullQasm += '00';
+    const response = await fetch(API_BASE + '/execute', {
+      method: 'POST',
+      headers: setAuthHeader({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ qasm_d: fullQasm, shots: 1024 })
+    });
+    const data = await response.json();
+    if (data.success) {
+      const d = data.data;
+      let html = '';
+      if (d.visualizations.histogram) html += `<img src="data:image/png;base64,${d.visualizations.histogram}" alt="Histogram">`;
+      if (d.visualizations.bloch) html += `<img src="data:image/png;base64,${d.visualizations.bloch}" alt="Bloch">`;
+      if (d.visualizations.qsphere) html += `<img src="data:image/png;base64,${d.visualizations.qsphere}" alt="Q-sphere">`;
+      html += `<div class="code-snippet">${JSON.stringify(d.results.counts, null, 2)}</div>`;
+      document.getElementById('resultsArea').innerHTML = html;
     } else {
-      diagramEmpty.style.display = 'none';
-    }
- 
-    const width = LEFT_W + numCols * CELL_W + 20;
-    const height = TOP_PAD + (qubitCount + 1) * CELL_H + BOTTOM_PAD;
-    const yFor = (row) => TOP_PAD + row * CELL_H + CELL_H / 2;
-    const xFor = (col) => LEFT_W + col * CELL_W + CELL_W / 2;
-    const classicalY = TOP_PAD + qubitCount * CELL_H + CELL_H / 2;
- 
-    let svg = `<svg class="circuit-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
- 
-    // wires
-    for (let i = 0; i < qubitCount; i++) {
-      const y = yFor(i);
-      svg += `<line x1="${LEFT_W}" y1="${y}" x2="${width - 16}" y2="${y}" stroke="var(--border)" stroke-width="1.5"/>`;
-      svg += `<text x="${LEFT_W - 12}" y="${y + 4}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="12.5" fill="var(--text-muted)">q${i}</text>`;
-    }
-    // classical double line
-    svg += `<line x1="${LEFT_W}" y1="${classicalY - 1.5}" x2="${width - 16}" y2="${classicalY - 1.5}" stroke="var(--border)" stroke-width="1"/>`;
-    svg += `<line x1="${LEFT_W}" y1="${classicalY + 1.5}" x2="${width - 16}" y2="${classicalY + 1.5}" stroke="var(--border)" stroke-width="1"/>`;
-    svg += `<text x="${LEFT_W - 12}" y="${classicalY + 4}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="12.5" fill="var(--text-dim)">c</text>`;
- 
-    ops.forEach((op, idx) => {
-      const g = GATES[op.type];
-      const col = cols[idx];
-      const cx = xFor(col);
-      const rows = op.qubits;
-      const minY = yFor(Math.min(...rows));
-      const maxY = yFor(Math.max(...rows));
-      const title = `${g.name} on q${rows.join(', q')}${op.param != null ? ` · θ=${op.param.toFixed(4)}` : ''} — click to remove`;
- 
-      svg += `<g class="op-hit" data-op-id="${op.id}">`;
-      svg += `<title>${title}</title>`;
- 
-      if (rows.length > 1) {
-        svg += `<line x1="${cx}" y1="${minY}" x2="${cx}" y2="${maxY}" stroke="${gateFill(op.type)}" stroke-width="2" class="op-glyph"/>`;
-      }
- 
-      if (op.type === 'CX') {
-        svg += dot(cx, yFor(rows[0]));
-        svg += target(cx, yFor(rows[1]));
-      } else if (op.type === 'CZ') {
-        svg += dot(cx, yFor(rows[0]));
-        svg += dot(cx, yFor(rows[1]));
-      } else if (op.type === 'SWAP') {
-        svg += swapMark(cx, yFor(rows[0]));
-        svg += swapMark(cx, yFor(rows[1]));
-      } else if (op.type === 'CCX') {
-        svg += dot(cx, yFor(rows[0]));
-        svg += dot(cx, yFor(rows[1]));
-        svg += target(cx, yFor(rows[2]));
-      } else if (op.type === 'MEASURE') {
-        svg += box(cx, yFor(rows[0]), 'M', null, true);
-        svg += `<line x1="${cx}" y1="${yFor(rows[0]) + 23}" x2="${cx}" y2="${classicalY - 6}" stroke="var(--warm)" stroke-width="1.5" stroke-dasharray="3,3"/>`;
-        svg += `<text x="${cx + 8}" y="${classicalY - 8}" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--warm)">c${rows[0]}</text>`;
-      } else {
-        const sub = op.param != null ? op.param.toFixed(2) : null;
-        svg += box(cx, yFor(rows[0]), g.label, sub, false);
-      }
-      svg += `</g>`;
-    });
- 
-    svg += `</svg>`;
-    canvasScroll.querySelectorAll('svg.circuit-svg').forEach(n => n.remove());
-    canvasScroll.insertAdjacentHTML('beforeend', svg);
- 
-    const svgEl = canvasScroll.querySelector('svg.circuit-svg');
-    if (svgEl) {
-      svgEl.addEventListener('click', (e) => {
-        const g = e.target.closest('[data-op-id]');
-        if (!g) return;
-        const opId = g.dataset.opId;
-        pushHistory();
-        state.ops = state.ops.filter(o => o.id !== opId);
-        renderAll();
-      });
-    }
- 
-    function box(x, y, label, sub, isMeasure) {
-      const stroke = isMeasure ? 'var(--warm)' : 'var(--accent)';
-      let s = `<rect class="op-box" x="${x - 22}" y="${y - 22}" width="44" height="44" rx="8" fill="var(--panel-3)" stroke="${stroke}" stroke-width="1.5"/>`;
-      if (isMeasure) {
-        s += `<path d="M ${x - 10} ${y + 6} A 10 10 0 0 1 ${x + 10} ${y + 6}" fill="none" stroke="${stroke}" stroke-width="1.6"/>`;
-        s += `<line x1="${x}" y1="${y + 6}" x2="${x + 6}" y2="${y - 6}" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>`;
-      } else {
-        s += `<text x="${x}" y="${sub ? y - 2 : y + 5}" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-weight="600" font-size="14" fill="${stroke}">${label}</text>`;
-        if (sub) s += `<text x="${x}" y="${y + 13}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9.5" fill="var(--text-muted)">${sub}</text>`;
-      }
-      return s;
-    }
-    function dot(x, y) {
-      return `<circle class="op-dot" cx="${x}" cy="${y}" r="6.5" fill="var(--accent)"/>`;
-    }
-    function target(x, y) {
-      return `<circle class="op-glyph" cx="${x}" cy="${y}" r="15" fill="var(--panel-3)" stroke="var(--accent)" stroke-width="1.8"/>` +
-             `<line class="op-glyph" x1="${x - 15}" y1="${y}" x2="${x + 15}" y2="${y}" stroke="var(--accent)" stroke-width="1.8"/>` +
-             `<line class="op-glyph" x1="${x}" y1="${y - 15}" x2="${x}" y2="${y + 15}" stroke="var(--accent)" stroke-width="1.8"/>`;
-    }
-    function swapMark(x, y) {
-      return `<line class="op-glyph" x1="${x - 8}" y1="${y - 8}" x2="${x + 8}" y2="${y + 8}" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"/>` +
-             `<line class="op-glyph" x1="${x - 8}" y1="${y + 8}" x2="${x + 8}" y2="${y - 8}" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"/>`;
-    }
-  }
- 
-  // ================= QASM field =================
-  function renderQasmField() {
-    qasmField.value = buildQasmD(state.qubitCount, state.ops);
-  }
- 
-  $('copyQasmBtn').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(qasmField.value);
-      toast('QASM-D string copied.');
-    } catch {
-      qasmField.select();
-      document.execCommand('copy');
-      toast('QASM-D string copied.');
+      alert('Error: ' + (data.error || 'Unknown error'));
     }
   });
- 
-  $('applyQasmBtn').addEventListener('click', () => {
-    try {
-      const parsed = parseQasmD(qasmField.value);
-      pushHistory();
-      state = parsed;
-      clearTool();
-      renderAll();
-      toast('Circuit updated from QASM-D string.');
-    } catch (e) {
-      toast('Could not parse: ' + e.message, 'err');
+
+  // Initialise qubit buttons
+  updateQubitButtons();
+}
+
+// ─── Tab switching ──────────────────────────────────────────────────
+tabsContainer.addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if (tab) switchTab(tab.dataset.tab);
+});
+
+// ─── Auth overlay logic ────────────────────────────────────────────
+authSwitch.addEventListener('click', () => {
+  isLoginMode = !isLoginMode;
+  if (isLoginMode) {
+    authTitle.textContent = 'Login';
+    authSub.textContent = 'Enter your credentials to access the platform.';
+    authSubmit.textContent = 'Login';
+    authSwitch.textContent = 'Switch to Register';
+    authExtra.style.display = 'none';
+  } else {
+    authTitle.textContent = 'Register';
+    authSub.textContent = 'Create a new account to get started.';
+    authSubmit.textContent = 'Register';
+    authSwitch.textContent = 'Switch to Login';
+    authExtra.style.display = 'block';
+  }
+  authError.style.display = 'none';
+});
+
+authSubmit.addEventListener('click', async () => {
+  const email = authEmail.value.trim();
+  const password = authPassword.value.trim();
+  if (!email || !password) { authError.textContent = 'Email and password are required.'; authError.style.display = 'block'; return; }
+  authError.style.display = 'none';
+  try {
+    if (isLoginMode) {
+      await login(email, password);
+    } else {
+      const fullName = authFullName.value.trim() || email;
+      await register(email, password, fullName);
     }
-  });
- 
-  $('exportJsonBtn').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'qcc-circuit.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
- 
-  $('importJsonBtn').addEventListener('click', () => {
-    $('importTextarea').value = '';
-    $('importModalError').textContent = '';
-    $('importModalOverlay').classList.add('open');
-  });
-  $('importCancelBtn').addEventListener('click', () => $('importModalOverlay').classList.remove('open'));
-  $('importOkBtn').addEventListener('click', () => {
-    try {
-      const obj = JSON.parse($('importTextarea').value);
-      if (!obj.qubitCount || !Array.isArray(obj.ops)) throw new Error('Missing qubitCount or ops array.');
-      obj.ops.forEach(op => { if (!op.id) op.id = uid(); });
-      pushHistory();
-      state = obj;
-      clearTool();
-      renderAll();
-      $('importModalOverlay').classList.remove('open');
-      toast('Circuit imported.');
-    } catch (e) {
-      $('importModalError').textContent = e.message;
-    }
-  });
- 
-  // ================= Angle modal =================
-  let angleCallback = null;
-  function openAngleModal(gateKey, cb) {
-    $('angleModalTitle').textContent = `${GATES[gateKey].name} — angle`;
-    $('angleInput').value = '1.5708';
-    $('angleModalError').textContent = '';
-    angleCallback = cb;
-    $('angleModalOverlay').classList.add('open');
-    setTimeout(() => $('angleInput').focus(), 30);
+  } catch (err) {
+    authError.textContent = err.message || 'Authentication failed.';
+    authError.style.display = 'block';
   }
-  $('angleModalOverlay').querySelectorAll('.preset-row button').forEach(b => {
-    b.addEventListener('click', () => { $('angleInput').value = b.dataset.val; });
-  });
-  $('angleCancelBtn').addEventListener('click', () => {
-    $('angleModalOverlay').classList.remove('open');
-    angleCallback = null;
-  });
-  $('angleOkBtn').addEventListener('click', () => {
-    const v = parseFloat($('angleInput').value);
-    if (Number.isNaN(v)) { $('angleModalError').textContent = 'Enter a valid number.'; return; }
-    $('angleModalOverlay').classList.remove('open');
-    if (angleCallback) angleCallback(v);
-    angleCallback = null;
-  });
- 
-  // ================= Run =================
-  $('runBtn').addEventListener('click', runCircuit);
- 
-  async function runCircuit() {
-    if (!state.ops.length) { toast('Add at least one gate first.'); return; }
-    const shots = parseInt($('shotsInput').value, 10) || 1024;
-    const qasm_d = buildQasmD(state.qubitCount, state.ops);
-    const runBtn = $('runBtn');
-    runBtn.disabled = true;
-    runBtn.textContent = '⟳ Simulating…';
-    try {
-      const res = await fetch(`${apiBase}/api/parse`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qasm_d, shots }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        lastResult = { error: data.error, traceback: data.traceback };
-      } else {
-        lastResult = { data: data.data };
-      }
-    } catch (e) {
-      lastResult = { error: `Could not reach ${apiBase} — ${e.message}` };
-    }
-    runBtn.disabled = false;
-    runBtn.textContent = '▶ Run circuit';
-    renderResults();
+});
+
+// ─── Logout ─────────────────────────────────────────────────────────
+logoutBtn.addEventListener('click', logout);
+
+// ─── Initialisation ────────────────────────────────────────────────
+(async function init() {
+  await loadUser();
+  if (currentUser) {
+    hideAuth();
+    renderTab();
+  } else {
+    showAuth();
   }
- 
-  // ================= Results panel =================
-  document.querySelectorAll('.tab').forEach(t => {
-    t.addEventListener('click', () => {
-      activeTab = t.dataset.tab;
-      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
-      renderResults();
-    });
-  });
- 
-  function renderResults() {
-    if (!lastResult) {
-      tabBody.innerHTML = `<div class="placeholder"><b>No results yet</b>Build a circuit and press Run to simulate it and generate code for 11 SDKs.</div>`;
-      return;
-    }
-    if (lastResult.error) {
-      tabBody.innerHTML = `
-        <div class="error-banner">
-          <b>Run failed</b>${escapeHtml(lastResult.error)}
-          ${lastResult.traceback ? `<details><summary>Traceback</summary><pre>${escapeHtml(lastResult.traceback)}</pre></details>` : ''}
-        </div>`;
-      return;
-    }
-    const d = lastResult.data;
-    if (activeTab === 'visualize') renderVisualize(d);
-    else if (activeTab === 'data') renderData(d);
-    else renderCode(d);
-  }
- 
-  function renderVisualize(d) {
-    const v = d.visualizations;
-    tabBody.innerHTML = `
-      ${vizCard('Histogram', v.histogram, 'histogram')}
-      ${vizCard('Bloch spheres', v.bloch, 'bloch-spheres')}
-      ${vizCard('Q-sphere', v.qsphere, 'qsphere')}
-    `;
-  }
-  function vizCard(title, b64, filename) {
-    if (!b64) return `<div class="viz-card"><h4>${title}</h4><span class="placeholder" style="padding:20px 0;">Not available</span></div>`;
-    const src = 'data:image/png;base64,' + b64;
-    return `<div class="viz-card">
-      <h4>${title} <a class="dl-link" href="${src}" download="${filename}.png">Download</a></h4>
-      <img src="${src}" alt="${title}">
-    </div>`;
-  }
- 
-  function renderData(d) {
-    const counts = d.results.counts;
-    const sv = d.results.statevector;
-    const maxCount = Math.max(...Object.values(counts));
-    const countRows = Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([state_, n]) => `
-        <div class="count-row">
-          <span class="count-label">${state_}</span>
-          <div class="count-bar-track"><div class="count-bar-fill" style="width:${(n / maxCount * 100).toFixed(1)}%"></div></div>
-          <span class="count-val">${n}</span>
-        </div>`).join('');
- 
-    const svRows = sv.map(row => `
-      <tr>
-        <td>${row.state}</td>
-        <td>${row.amplitude}</td>
-        <td>
-          <div class="prob-cell">
-            <div class="prob-track"><div class="prob-fill" style="width:${(row.probability * 100).toFixed(1)}%"></div></div>
-            <span>${(row.probability * 100).toFixed(1)}%</span>
-          </div>
-        </td>
-      </tr>`).join('');
- 
-    tabBody.innerHTML = `
-      <div class="data-section">
-        <h4>Measurement counts</h4>
-        ${countRows}
-        <details class="raw-json"><summary>Raw JSON</summary><pre>${escapeHtml(JSON.stringify(counts, null, 2))}</pre></details>
-      </div>
-      <div class="data-section">
-        <h4>Statevector</h4>
-        <table class="sv-table">
-          <thead><tr><th>State</th><th>Amplitude</th><th>Probability</th></tr></thead>
-          <tbody>${svRows}</tbody>
-        </table>
-        <details class="raw-json"><summary>Raw JSON</summary><pre>${escapeHtml(JSON.stringify(sv, null, 2))}</pre></details>
-      </div>
-      <div class="data-section">
-        <h4>Circuit metadata</h4>
-        <details class="raw-json" open><summary>Details</summary><pre>${escapeHtml(JSON.stringify(d.metadata, null, 2))}</pre></details>
-      </div>
-    `;
-  }
- 
-  function renderCode(d) {
-    const keys = Object.keys(d.code);
-    if (!keys.includes(activeSdk)) activeSdk = keys[0];
-    const pills = keys.map(k => `<button class="sdk-pill ${k === activeSdk ? 'active' : ''}" data-sdk="${k}">${SDK_LABELS[k] || k}</button>`).join('');
-    tabBody.innerHTML = `
-      <div class="sdk-pills">${pills}</div>
-      <div class="code-block-wrap">
-        <button class="btn btn-ghost btn-icon copy-btn" id="copyCodeBtn" title="Copy code">⧉</button>
-        <pre class="code-block" id="codeBlock">${escapeHtml(d.code[activeSdk] || 'Not available')}</pre>
-      </div>
-    `;
-    tabBody.querySelectorAll('.sdk-pill').forEach(p => {
-      p.addEventListener('click', () => { activeSdk = p.dataset.sdk; renderCode(d); });
-    });
-    $('copyCodeBtn').addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(d.code[activeSdk] || '');
-        toast(`${SDK_LABELS[activeSdk] || activeSdk} code copied.`);
-      } catch {
-        toast('Copy failed — select and copy manually.', 'err');
-      }
-    });
-  }
- 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  }
- 
-  // ================= Render orchestration =================
-  function renderAll() {
-    qubitVal.textContent = state.qubitCount;
-    renderQubitButtons();
-    renderDiagram();
-    renderQasmField();
-  }
- 
-  renderAll();
-  setStatus('Ready. Select a gate, then a qubit.');
 })();
+
 </script>
 </body>
 </html>
- 
-
-
-
