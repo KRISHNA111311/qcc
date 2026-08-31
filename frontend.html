@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QCC - Quantum Circuit Composer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1400px; margin: 20px auto; padding: 20px; background: #f5f5f5; }
+        .container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; min-width: 300px; }
+        .gate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .gate-btn { padding: 10px; border: 1px solid #ddd; background: #fafafa; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .gate-btn:hover { background: #e0e0e0; }
+        .gate-btn.selected { background: #4CAF50; color: white; border-color: #4CAF50; }
+        .qubit-grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+        .qubit-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; }
+        .qubit-btn.selected { background: #2196F3; color: white; border-color: #2196F3; }
+        .output { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow: auto; }
+        .result-section { margin-top: 20px; }
+        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow: auto; }
+        .code-item { border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+        .code-label { background: #333; color: white; padding: 5px 10px; font-weight: bold; }
+        img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin: 10px 0; }
+        .status { padding: 10px; background: #f0f0f0; border-radius: 4px; margin-top: 10px; }
+        .btn-primary { padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-danger { padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .code-list { max-height: 500px; overflow-y: auto; }
+        .code-list .code-item { margin-bottom: 10px; }
+        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .viz-item { text-align: center; }
+        @media (max-width: 768px) { .viz-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <h1>🧪 Quantum Circuit Composer (QCC) - Demo</h1>
+    <div class="container">
+        <div class="panel" style="flex:1;">
+            <h2>Circuit Builder</h2>
+            <div>
+                <h3>Gates</h3>
+                <div class="gate-grid">
+                    <button class="gate-btn" data-gate="H">H</button>
+                    <button class="gate-btn" data-gate="X">X</button>
+                    <button class="gate-btn" data-gate="Y">Y</button>
+                    <button class="gate-btn" data-gate="Z">Z</button>
+                    <button class="gate-btn" data-gate="S">S</button>
+                    <button class="gate-btn" data-gate="T">T</button>
+                    <button class="gate-btn" data-gate="SX">SX</button>
+                    <button class="gate-btn" data-gate="RX">RX</button>
+                    <button class="gate-btn" data-gate="RY">RY</button>
+                    <button class="gate-btn" data-gate="RZ">RZ</button>
+                    <button class="gate-btn" data-gate="CX">CX</button>
+                    <button class="gate-btn" data-gate="CZ">CZ</button>
+                    <button class="gate-btn" data-gate="SWAP">SWAP</button>
+                    <button class="gate-btn" data-gate="CCX">CCX</button>
+                    <button class="gate-btn" data-gate="I">I</button>
+                    <button class="gate-btn" data-gate="MEASURE">M</button>
+                </div>
+            </div>
+            <div>
+                <h3>Qubits</h3>
+                <div id="qubitContainer" class="qubit-grid"></div>
+                <button id="addQubitBtn" class="btn-primary" style="padding:6px 12px;">+ Add Qubit</button>
+                <button id="removeQubitBtn" class="btn-danger" style="padding:6px 12px;">- Remove Qubit</button>
+            </div>
+            <div>
+                <h3>QASM-D String</h3>
+                <input id="qasmInput" type="text" style="width:100%; padding:8px; font-family:monospace; border-radius:4px; border:1px solid #ddd;" placeholder="QASM-D string will appear here...">
+                <div style="margin-top:10px;">
+                    <button id="runBtn" class="btn-primary">▶ Run</button>
+                    <button id="clearBtn" class="btn-danger">✕ Clear</button>
+                    <button id="importBtn" class="btn-primary">⬅ Import</button>
+                </div>
+            </div>
+            <div id="status" class="status">Ready</div>
+        </div>
+        <div class="panel" style="flex:2;">
+            <h2>Results</h2>
+            <div id="results" style="display:none;">
+                <div class="result-section">
+                    <h3>Histogram</h3>
+                    <img id="histogramImg" />
+                </div>
+                <div class="result-section viz-grid">
+                    <div class="viz-item">
+                        <h3>Bloch Spheres</h3>
+                        <img id="blochImg" />
+                    </div>
+                    <div class="viz-item">
+                        <h3>Q-Sphere</h3>
+                        <img id="qsphereImg" />
+                    </div>
+                </div>
+                <div class="result-section">
+                    <h3>Counts</h3>
+                    <div id="countsDisplay" class="output"></div>
+                </div>
+                <div class="result-section">
+                    <h3>Statevector</h3>
+                    <div id="statevectorDisplay" class="output"></div>
+                </div>
+                <div class="result-section">
+                    <h3>Generated Code</h3>
+                    <div id="codeContainer" class="code-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // State
+        let selectedGate = null;
+        let selectedQubits = [];
+        let qasmString = "";
+        let qubitCount = 2;
+        let gateArity = { 'H':1, 'X':1, 'Y':1, 'Z':1, 'S':1, 'T':1, 'SX':1, 'RX':1, 'RY':1, 'RZ':1, 'CX':2, 'CZ':2, 'SWAP':2, 'CCX':3, 'I':1, 'MEASURE':1 };
+        let gateCode = { 'H':'1', 'X':'3', 'Y':'4', 'Z':'5', 'S':'J', 'T':'L', 'SX':'N', 'RX':'8', 'RY':'9', 'RZ':'D', 'CX':'2', 'CZ':'F', 'SWAP':'7', 'CCX':'G', 'I':'I', 'MEASURE':'A' };
+        let angleValues = {};
+
+        const API_BASE = 'http://127.0.0.1:8000';
+
+        // DOM refs
+        const qubitContainer = document.getElementById('qubitContainer');
+        const qasmInput = document.getElementById('qasmInput');
+        const runBtn = document.getElementById('runBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const importBtn = document.getElementById('importBtn');
+        const addQubitBtn = document.getElementById('addQubitBtn');
+        const removeQubitBtn = document.getElementById('removeQubitBtn');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        const histogramImg = document.getElementById('histogramImg');
+        const blochImg = document.getElementById('blochImg');
+        const qsphereImg = document.getElementById('qsphereImg');
+        const countsDisplay = document.getElementById('countsDisplay');
+        const statevectorDisplay = document.getElementById('statevectorDisplay');
+        const codeContainer = document.getElementById('codeContainer');
+
+        function renderQubits() {
+            qubitContainer.innerHTML = '';
+            for (let i = 0; i < qubitCount; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'qubit-btn';
+                btn.textContent = `q${i}`;
+                btn.dataset.qubit = i;
+                btn.addEventListener('click', () => handleQubitClick(i));
+                qubitContainer.appendChild(btn);
+            }
+        }
+
+        // Gate selection
+        document.querySelectorAll('.gate-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedGate = btn.dataset.gate;
+                selectedQubits = [];
+                statusDiv.textContent = `Selected: ${selectedGate}. Click ${gateArity[selectedGate]} qubit(s).`;
+                if (['RX','RY','RZ'].includes(selectedGate)) {
+                    const angle = prompt(`Enter angle for ${selectedGate} (in radians):`, '1.5708');
+                    if (angle !== null) {
+                        angleValues[selectedGate] = parseFloat(angle);
+                    } else {
+                        document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+                        selectedGate = null;
+                        statusDiv.textContent = 'Ready';
+                    }
+                }
+            });
+        });
+
+        function handleQubitClick(q) {
+            if (!selectedGate) {
+                statusDiv.textContent = 'Select a gate first.';
+                return;
+            }
+            const arity = gateArity[selectedGate] || 1;
+            if (selectedQubits.includes(q)) return;
+            selectedQubits.push(q);
+            document.querySelectorAll('.qubit-btn').forEach(btn => {
+                btn.classList.toggle('selected', selectedQubits.includes(parseInt(btn.dataset.qubit)));
+            });
+            if (selectedQubits.length === arity) {
+                const code = gateCode[selectedGate];
+                if (!code) {
+                    statusDiv.textContent = `Unknown gate: ${selectedGate}`;
+                    return;
+                }
+                let token = '';
+                if (['RX','RY','RZ'].includes(selectedGate)) {
+                    const angle = angleValues[selectedGate] || 0;
+                    const angleInt = Math.round(angle * 100);
+                    const angleStr = String(angleInt).padStart(4, '0');
+                    const qubitStr = (selectedQubits[0] + 1).toString();
+                    token = code + qubitStr + angleStr;
+                } else {
+                    const qubitStr = selectedQubits.map(q => (q+1).toString()).join('');
+                    token = code + qubitStr;
+                }
+                if (qasmString === '') {
+                    qasmString = qubitCount.toString() + '#' + token;
+                } else {
+                    qasmString += '#' + token;
+                }
+                qasmInput.value = qasmString;
+                statusDiv.textContent = `Added ${selectedGate} on qubits ${selectedQubits.join(',')}`;
+                selectedQubits = [];
+                document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
+                document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+                selectedGate = null;
+                angleValues = {};
+            } else {
+                statusDiv.textContent = `Selected ${selectedQubits.length}/${arity} qubits for ${selectedGate}`;
+            }
+        }
+
+        clearBtn.addEventListener('click', () => {
+            qasmString = '';
+            qasmInput.value = '';
+            selectedQubits = [];
+            document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+            selectedGate = null;
+            resultsDiv.style.display = 'none';
+            statusDiv.textContent = 'Cleared';
+        });
+
+        importBtn.addEventListener('click', () => {
+            const imported = prompt('Paste QASM-D string:');
+            if (imported) {
+                qasmString = imported;
+                qasmInput.value = imported;
+                statusDiv.textContent = 'Imported QASM-D string.';
+            }
+        });
+
+        addQubitBtn.addEventListener('click', () => {
+            qubitCount++;
+            if (qasmString === '') {
+                qasmString = qubitCount.toString();
+            } else {
+                const parts = qasmString.split('#');
+                parts[0] = qubitCount.toString();
+                qasmString = parts.join('#');
+            }
+            qasmInput.value = qasmString;
+            renderQubits();
+            statusDiv.textContent = `Qubits set to ${qubitCount}`;
+        });
+
+        removeQubitBtn.addEventListener('click', () => {
+            if (qubitCount > 1) {
+                qubitCount--;
+                if (qasmString === '') {
+                    qasmString = qubitCount.toString();
+                } else {
+                    const parts = qasmString.split('#');
+                    parts[0] = qubitCount.toString();
+                    qasmString = parts.join('#');
+                }
+                qasmInput.value = qasmString;
+                renderQubits();
+                statusDiv.textContent = `Qubits set to ${qubitCount}`;
+            } else {
+                statusDiv.textContent = 'Cannot remove last qubit.';
+            }
+        });
+
+        runBtn.addEventListener('click', async () => {
+            const qasm_d = qasmInput.value.trim();
+            if (!qasm_d) {
+                statusDiv.textContent = 'Please build a circuit first.';
+                return;
+            }
+            statusDiv.textContent = 'Running...';
+            try {
+                const response = await fetch(`${API_BASE}/api/parse`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ qasm_d, shots: 1024 })
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    statusDiv.textContent = 'Error: ' + data.error;
+                    return;
+                }
+                resultsDiv.style.display = 'block';
+                const results = data.data;
+                if (results.visualizations.histogram) {
+                    histogramImg.src = 'data:image/png;base64,' + results.visualizations.histogram;
+                }
+                if (results.visualizations.bloch) {
+                    blochImg.src = 'data:image/png;base64,' + results.visualizations.bloch;
+                }
+                if (results.visualizations.qsphere) {
+                    qsphereImg.src = 'data:image/png;base64,' + results.visualizations.qsphere;
+                }
+                countsDisplay.textContent = JSON.stringify(results.results.counts, null, 2);
+                statevectorDisplay.textContent = JSON.stringify(results.results.statevector, null, 2);
+
+                // Render code snippets
+                codeContainer.innerHTML = '';
+                const codeKeys = Object.keys(results.code);
+                codeKeys.forEach(key => {
+                    const item = document.createElement('div');
+                    item.className = 'code-item';
+                    const label = document.createElement('div');
+                    label.className = 'code-label';
+                    label.textContent = key.toUpperCase();
+                    const pre = document.createElement('pre');
+                    pre.className = 'code-block';
+                    pre.textContent = results.code[key] || 'Not available';
+                    item.appendChild(label);
+                    item.appendChild(pre);
+                    codeContainer.appendChild(item);
+                });
+
+                statusDiv.textContent = 'Done';
+            } catch (e) {
+                statusDiv.textContent = 'Error: ' + e.message;
+            }
+        });
+
+        // Initial render
+        renderQubits();
+        qasmInput.value = '';
+        statusDiv.textContent = 'Ready. Select a gate, then click qubits.';
+    </script>
+</body>
+</html>

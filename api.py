@@ -17,14 +17,23 @@ import json
 import base64
 import io
 import matplotlib.pyplot as plt
-from qiskit.visualization import plot_histogram
 
-# Import your existing modules
+# Qiskit imports for visualization
+from qiskit.visualization import plot_histogram, plot_bloch_multivector, plot_state_qsphere
+
+# Import QCC core
 from qcc.qasm_d.parser import QASMDParser
-from qcc.qasm_d.encoder import QASMDEncoder
 from qcc.translators.qiskit import QiskitTranslator
 from qcc.translators.qasm3 import QASM3Translator
-from qcc.visualizers.bloch import BlochVisualizer
+from qcc.translators.cirq import CirqTranslator
+from qcc.translators.pennylane import PennyLaneTranslator
+from qcc.translators.braket import BraketTranslator
+from qcc.translators.pytket import PyTketTranslator
+from qcc.translators.stim import StimTranslator
+from qcc.translators.cudaq import CUDAQTranslator
+from qcc.translators.azure import AzureTranslator
+from qcc.translators.tensorcircuit import TensorCircuitTranslator
+from qcc.translators.myqlm import MyQLMTranslator
 
 app = FastAPI(title="QCC - Quantum Circuit Composer API")
 
@@ -148,38 +157,24 @@ def run_circuit(ast, shots):
     
     return counts, statevector
 
-def generate_histogram(counts):
-    fig = plot_histogram(counts)
+def fig_to_base64(fig):
+    """Convert matplotlib figure to base64 PNG."""
     buf = io.BytesIO()
     fig.savefig(buf, format='png', bbox_inches='tight')
     buf.seek(0)
     return base64.b64encode(buf.read()).decode('utf-8')
 
-def compute_bloch_vectors(statevector):
-    import numpy as np
-    from qiskit.quantum_info import partial_trace
-    n_qubits = int(np.log2(len(statevector)))
-    vectors = []
-    for qubit in range(n_qubits):
-        if n_qubits == 1:
-            alpha = statevector[0]
-            beta = statevector[1]
-            x = 2 * np.real(alpha * np.conj(beta))
-            y = 2 * np.imag(alpha * np.conj(beta))
-            z = np.abs(alpha)**2 - np.abs(beta)**2
-            vectors.append({"qubit": qubit, "x": x, "y": y, "z": z})
-        else:
-            rho_full = np.outer(statevector, np.conj(statevector))
-            trace_out = [i for i in range(n_qubits) if i != qubit]
-            rho_q = partial_trace(rho_full, trace_out)
-            X = np.array([[0, 1], [1, 0]])
-            Y = np.array([[0, -1j], [1j, 0]])
-            Z = np.array([[1, 0], [0, -1]])
-            x = np.real(np.trace(rho_q @ X))
-            y = np.real(np.trace(rho_q @ Y))
-            z = np.real(np.trace(rho_q @ Z))
-            vectors.append({"qubit": qubit, "x": x, "y": y, "z": z})
-    return vectors
+def generate_histogram(counts):
+    fig = plot_histogram(counts)
+    return fig_to_base64(fig)
+
+def generate_bloch_multivector(statevector):
+    fig = plot_bloch_multivector(statevector)
+    return fig_to_base64(fig)
+
+def generate_qsphere(statevector):
+    fig = plot_state_qsphere(statevector, show_state_labels=True, show_state_phases=True)
+    return fig_to_base64(fig)
 
 def format_statevector(statevector):
     import numpy as np
@@ -235,24 +230,24 @@ async def parse_circuit(request: ParseRequest):
         
         counts, statevector = run_circuit(ast, request.shots)
         
-        # Code generation
+        # Code generation for all SDKs
         code = {
             "qiskit": QiskitTranslator.generate(ast),
             "qasm3": QASM3Translator.generate(ast),
+            "cirq": CirqTranslator.generate(ast),
+            "pennylane": PennyLaneTranslator.generate(ast),
+            "braket": BraketTranslator.generate(ast),
+            "pytket": PyTketTranslator.generate(ast),
+            "stim": StimTranslator.generate(ast),
+            "cudaq": CUDAQTranslator.generate(ast),
+            "azure": AzureTranslator.generate(ast),
+            "tensorcircuit": TensorCircuitTranslator.generate(ast),
+            "myqlm": MyQLMTranslator.generate(ast),
         }
         
         hist_img = generate_histogram(counts)
-        bloch_vectors = compute_bloch_vectors(statevector)
-        
-        # Convert to tuples for BlochVisualizer.plot
-        bloch_tuples = [(v["x"], v["y"], v["z"]) for v in bloch_vectors]
-        
-        # Generate Bloch image
-        temp_path = "temp_bloch.png"
-        BlochVisualizer.plot(bloch_tuples, save_path=temp_path)
-        with open(temp_path, "rb") as f:
-            bloch_img = base64.b64encode(f.read()).decode('utf-8')
-        os.remove(temp_path)
+        bloch_img = generate_bloch_multivector(statevector)
+        qsphere_img = generate_qsphere(statevector)
         
         response = {
             "success": True,
@@ -273,9 +268,9 @@ async def parse_circuit(request: ParseRequest):
                 "visualizations": {
                     "histogram": hist_img,
                     "bloch": bloch_img,
+                    "qsphere": qsphere_img,
                 },
                 "code": code,
-                "bloch_vectors": bloch_vectors
             }
         }
         return JSONResponse(response)
