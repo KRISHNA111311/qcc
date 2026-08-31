@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>QCC Composer</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .gate-btn { margin: 4px; padding: 6px 12px; cursor: pointer; }
+        .qubit-btn { margin: 4px; padding: 6px 12px; cursor: pointer; }
+        .selected { background-color: #4CAF50; color: white; }
+        #qasm-display { width: 100%; padding: 8px; margin: 10px 0; font-family: monospace; }
+        .result-section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+        .code-block { background: #f4f4f4; padding: 10px; overflow: auto; white-space: pre; font-family: monospace; }
+        img { max-width: 100%; }
+    </style>
+</head>
+<body>
+    <h1>QCC Composer</h1>
+
+    <div>
+        <h3>Gates</h3>
+        <div id="gates">
+            <!-- Single qubit -->
+            <button class="gate-btn" data-gate="H">H</button>
+            <button class="gate-btn" data-gate="X">X</button>
+            <button class="gate-btn" data-gate="Y">Y</button>
+            <button class="gate-btn" data-gate="Z">Z</button>
+            <button class="gate-btn" data-gate="S">S</button>
+            <button class="gate-btn" data-gate="SDG">SDG</button>
+            <button class="gate-btn" data-gate="T">T</button>
+            <button class="gate-btn" data-gate="TDG">TDG</button>
+            <button class="gate-btn" data-gate="SX">SX</button>
+            <!-- Multi qubit -->
+            <button class="gate-btn" data-gate="CX">CX</button>
+            <button class="gate-btn" data-gate="CZ">CZ</button>
+            <button class="gate-btn" data-gate="SWAP">SWAP</button>
+            <button class="gate-btn" data-gate="CCX">CCX</button>
+            <!-- Parameterized -->
+            <button class="gate-btn" data-gate="RX">RX</button>
+            <button class="gate-btn" data-gate="RY">RY</button>
+            <button class="gate-btn" data-gate="RZ">RZ</button>
+            <button class="gate-btn" data-gate="PHASE">PHASE</button>
+            <!-- Other -->
+            <button class="gate-btn" data-gate="MEASURE">MEASURE</button>
+            <button class="gate-btn" data-gate="RESET">RESET</button>
+            <button class="gate-btn" data-gate="BARRIER">BARRIER</button>
+        </div>
+    </div>
+
+    <div>
+        <h3>Qubits (click to select)</h3>
+        <div id="qubits">
+            <button class="qubit-btn" data-qubit="0">0</button>
+            <button class="qubit-btn" data-qubit="1">1</button>
+            <button class="qubit-btn" data-qubit="2">2</button>
+            <button class="qubit-btn" data-qubit="3">3</button>
+            <button class="qubit-btn" data-qubit="4">4</button>
+            <button class="qubit-btn" data-qubit="5">5</button>
+            <button class="qubit-btn" data-qubit="6">6</button>
+            <button class="qubit-btn" data-qubit="7">7</button>
+            <button class="qubit-btn" data-qubit="8">8</button>
+            <button class="qubit-btn" data-qubit="9">9</button>
+        </div>
+    </div>
+
+    <div>
+        <h3>Angle (for parameterized gates)</h3>
+        <input type="number" id="angle-input" value="1.5708" step="0.0001">
+    </div>
+
+    <div>
+        <button id="append-btn">Append Gate</button>
+        <button id="clear-btn">Clear Circuit</button>
+        <button id="send-btn">Send to Backend</button>
+    </div>
+
+    <div>
+        <h3>QASM-D String</h3>
+        <textarea id="qasm-display" rows="2" readonly></textarea>
+    </div>
+
+    <div id="results">
+        <!-- Results will be injected here -->
+    </div>
+
+    <script>
+        let currentQasmD = "";
+        let selectedGate = null;
+        let selectedQubits = [];
+        let gateArity = 0; // number of qubits needed
+
+        const gateMap = {
+            'H': { arity: 1, code: '1' },
+            'X': { arity: 1, code: '3' },
+            'Y': { arity: 1, code: '4' },
+            'Z': { arity: 1, code: '5' },
+            'S': { arity: 1, code: 'J' },
+            'SDG': { arity: 1, code: 'K' },
+            'T': { arity: 1, code: 'L' },
+            'TDG': { arity: 1, code: 'M' },
+            'SX': { arity: 1, code: 'N' },
+            'CX': { arity: 2, code: '2' },
+            'CZ': { arity: 2, code: 'F' },
+            'SWAP': { arity: 2, code: '7' },
+            'CCX': { arity: 3, code: 'G' },
+            'RX': { arity: 1, code: '8', param: true },
+            'RY': { arity: 1, code: '9', param: true },
+            'RZ': { arity: 1, code: 'D', param: true },
+            'PHASE': { arity: 1, code: '6', param: true },
+            'MEASURE': { arity: 1, code: 'A' },
+            'RESET': { arity: 1, code: 'B' },
+            'BARRIER': { arity: 1, code: 'C' },
+        };
+
+        // Gate buttons
+        document.querySelectorAll('.gate-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const gateName = this.dataset.gate;
+                const info = gateMap[gateName];
+                if (!info) return;
+                selectedGate = gateName;
+                gateArity = info.arity;
+                selectedQubits = [];
+                // highlight selected gate
+                document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                // clear qubit highlights
+                document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
+                console.log(`Selected gate: ${gateName}, arity: ${gateArity}`);
+            });
+        });
+
+        // Qubit buttons
+        document.querySelectorAll('.qubit-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!selectedGate) {
+                    alert('Select a gate first.');
+                    return;
+                }
+                const qubit = parseInt(this.dataset.qubit);
+                if (selectedQubits.includes(qubit)) {
+                    // remove if already selected
+                    selectedQubits = selectedQubits.filter(q => q !== qubit);
+                    this.classList.remove('selected');
+                } else {
+                    if (selectedQubits.length < gateArity) {
+                        selectedQubits.push(qubit);
+                        this.classList.add('selected');
+                    } else {
+                        alert(`Gate ${selectedGate} requires exactly ${gateArity} qubit(s).`);
+                    }
+                }
+                console.log('Selected qubits:', selectedQubits);
+            });
+        });
+
+        // Append gate
+        document.getElementById('append-btn').addEventListener('click', function() {
+            if (!selectedGate) {
+                alert('Select a gate first.');
+                return;
+            }
+            if (selectedQubits.length !== gateArity) {
+                alert(`Gate ${selectedGate} requires ${gateArity} qubit(s), but you selected ${selectedQubits.length}.`);
+                return;
+            }
+            const info = gateMap[selectedGate];
+            let token = info.code;
+            // sort qubits for deterministic order (optional)
+            const qubits = selectedQubits.slice().sort((a,b)=>a-b);
+            token += qubits.map(q => q+1).join(''); // 1-based
+            if (info.param) {
+                const angle = parseFloat(document.getElementById('angle-input').value);
+                if (isNaN(angle)) {
+                    alert('Enter a valid angle.');
+                    return;
+                }
+                const angleInt = Math.round(angle * 100);
+                const angleStr = angleInt.toString().padStart(4, '0');
+                token += angleStr;
+            }
+            // Append to current QASM-D
+            if (currentQasmD === "") {
+                // Need to set number of qubits first? For simplicity, we assume number of qubits is max qubit index + 1
+                // We'll set num_qubits dynamically when sending.
+                // Just store operations.
+                currentQasmD += token + '#';
+            } else {
+                currentQasmD += token + '#';
+            }
+            // Reset selection
+            selectedGate = null;
+            selectedQubits = [];
+            gateArity = 0;
+            document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('qasm-display').value = currentQasmD;
+        });
+
+        // Clear circuit
+        document.getElementById('clear-btn').addEventListener('click', function() {
+            currentQasmD = "";
+            document.getElementById('qasm-display').value = "";
+            // clear selections
+            document.querySelectorAll('.gate-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelectorAll('.qubit-btn').forEach(b => b.classList.remove('selected'));
+            selectedGate = null;
+            selectedQubits = [];
+            gateArity = 0;
+            document.getElementById('results').innerHTML = "";
+        });
+
+        // Send to backend
+        document.getElementById('send-btn').addEventListener('click', function() {
+            let qasm = currentQasmD;
+            if (!qasm) {
+                alert('Circuit is empty.');
+                return;
+            }
+            // Ensure it ends with 00 if not already
+            if (!qasm.endsWith('00')) {
+                qasm += '00';
+            }
+            // Add number of qubits at front? Actually we need to derive num_qubits from max qubit index + 1
+            // We can let backend derive it, but we need to include it in the string.
+            // For simplicity, we'll compute the number of qubits from the selected qubits in the whole circuit.
+            // But we don't have that info stored. Better to store the number of qubits separately or derive from max qubit index in tokens.
+            // We'll parse the tokens to find max qubit index.
+            const tokens = qasm.split('#').filter(t => t && t !== '00');
+            let maxQ = -1;
+            tokens.forEach(t => {
+                // token starts with gate code, then qubits and params.
+                // For parameterized gates, the first digit after code is qubit, then angle digits.
+                // For multi-qubit, all digits after code are qubits until angle? But angle only for param gates.
+                // We need a simple parser: for each token, extract digits after first char.
+                const code = t[0];
+                const rest = t.slice(1);
+                // For param gates, first digit is qubit, rest are angle.
+                // For others, all digits are qubits/classical.
+                const isParam = ['8','9','D','6'].includes(code);
+                let digits;
+                if (isParam) {
+                    digits = rest.slice(0, 1); // only first digit
+                } else {
+                    digits = rest;
+                }
+                for (let ch of digits) {
+                    const q = parseInt(ch) - 1;
+                    if (q > maxQ) maxQ = q;
+                }
+            });
+            const numQubits = maxQ + 1;
+            const fullQasm = numQubits + '#' + qasm;
+
+            // Send to backend
+            fetch('http://localhost:8000/api/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qasm_d: fullQasm, shots: 1024 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayResults(data.data);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(err => {
+                alert('Network error: ' + err.message);
+            });
+        });
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            let html = '<div class="result-section">';
+            html += '<h3>Results</h3>';
+
+            // Metadata
+            html += `<p>Qubits: ${data.metadata.num_qubits}, Classical: ${data.metadata.num_classical}, Depth: ${data.metadata.depth}</p>`;
+
+            // Histogram
+            if (data.visualizations.histogram) {
+                html += `<h4>Histogram</h4>`;
+                html += `<img src="data:image/png;base64,${data.visualizations.histogram}" />`;
+            }
+
+            // Bloch
+            if (data.visualizations.bloch) {
+                html += `<h4>Bloch Spheres</h4>`;
+                html += `<img src="data:image/png;base64,${data.visualizations.bloch}" />`;
+            }
+
+            // Code snippets
+            if (data.code) {
+                html += `<h4>Generated Code</h4>`;
+                for (const [lang, code] of Object.entries(data.code)) {
+                    html += `<strong>${lang}</strong>`;
+                    html += `<div class="code-block">${code}</div>`;
+                }
+            }
+
+            // Statevector
+            if (data.results.statevector) {
+                html += `<h4>Statevector</h4>`;
+                html += `<table border="1"><tr><th>State</th><th>Amplitude</th><th>Probability</th></tr>`;
+                data.results.statevector.forEach(s => {
+                    html += `<tr><td>${s.state}</td><td>${s.amplitude}</td><td>${(s.probability*100).toFixed(2)}%</td></tr>`;
+                });
+                html += `</table>`;
+            }
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

@@ -33,27 +33,28 @@ class QASMDParser:
         if not s:
             raise ParseError("Empty string")
 
-        # Split on '#' delimiter
         parts = s.split('#')
-        if not parts:
-            raise ParseError("Invalid format")
-
+        if len(parts) < 2:
+            raise ParseError("Invalid format: missing delimiter after qubit count")
+        
         try:
             num_qubits = int(parts[0])
         except ValueError:
             raise ParseError("Invalid qubit count")
-
+        
         ast = CircuitAST(num_qubits=num_qubits)
         tokens = parts[1:]
 
         for token in tokens:
             if token == '00':
-                # Measure all and stop
                 for q in range(num_qubits):
                     ast.add_gate(Gate(type=GateType.MEASURE, qubits=[q], classical_bits=[q]))
                 break
 
             if not token:
+                continue
+
+            if len(token) < 1:
                 continue
 
             gate_code = token[0]
@@ -62,11 +63,10 @@ class QASMDParser:
             gate_type = cls._gate_map[gate_code]
             params_str = token[1:]
 
-            # For gates with angle (RX, RY, RZ, PHASE): <code><qubit><4-digit angle>
             if gate_type in (GateType.RX, GateType.RY, GateType.RZ, GateType.PHASE):
                 if len(params_str) < 5:
-                    raise ParseError(f"{gate_type.value} requires qubit and 4-digit angle")
-                qubit = int(params_str[0]) - 1  # 1-based to 0-based
+                    raise ParseError(f"{gate_type.value} requires qubit and 4-digit angle, got {params_str}")
+                qubit = int(params_str[0]) - 1
                 angle_str = params_str[1:5]
                 try:
                     angle = float(angle_str) / 100.0
@@ -77,14 +77,12 @@ class QASMDParser:
                 ast.add_gate(Gate(type=gate_type, qubits=[qubit], params=[angle]))
                 continue
 
-            # For other gates, parse digits as numbers (qubit indices or classical bits)
             params = []
             for ch in params_str:
                 if ch.isdigit():
                     params.append(int(ch))
                 else:
                     raise ParseError(f"Invalid parameter character: {ch}")
-            # Convert 1-based to 0-based for qubit indices
             params = [p - 1 for p in params]
 
             if gate_type == GateType.H:
@@ -118,7 +116,6 @@ class QASMDParser:
                 classical = params[1] if len(params) > 1 else qubit
                 ast.add_gate(Gate(type=gate_type, qubits=[qubit], classical_bits=[classical]))
             else:
-                # Single-qubit gates (X, Y, Z, RESET, BARRIER)
                 if len(params) != 1:
                     raise ParseError(f"{gate_type.value} requires 1 qubit, got {len(params)}")
                 ast.add_gate(Gate(type=gate_type, qubits=params))
