@@ -6,9 +6,14 @@ from .api.content import router as content_router
 from .api.progress import router as progress_router
 from .config import get_settings
 from .logging import setup_logging
+from .db.session import engine
+from .db.models import Base
 
 settings = get_settings()
 setup_logging()
+
+# Initialize database tables on startup
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="QCC API", version="0.1.0")
 

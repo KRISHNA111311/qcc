@@ -35,6 +35,14 @@ from qcc.translators.azure import AzureTranslator
 from qcc.translators.tensorcircuit import TensorCircuitTranslator
 from qcc.translators.myqlm import MyQLMTranslator
 
+# Import auth and database
+from qcc.api.auth import router as auth_router
+from qcc.db.session import engine
+from qcc.db.models import Base
+
+# Initialize database tables
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(title="QCC - Quantum Circuit Composer API")
 
 # Enable CORS
@@ -44,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include auth router
+app.include_router(auth_router)
 
 class ParseRequest(BaseModel):
     qasm_d: str
