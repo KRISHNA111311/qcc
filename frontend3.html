@@ -561,6 +561,15 @@
   </div>
 
   <div class="field-group">
+    <label>Backend</label>
+    <select id="backendSelect" class="num-input" style="width:120px;">
+      <option value="qiskit-aer" selected>Qiskit Aer</option>
+      <option value="pennylane">PennyLane</option>
+      <option value="cirq">Cirq</option>
+    </select>
+  </div>
+
+  <div class="field-group">
     <button class="btn btn-icon" id="undoBtn" title="Undo (Ctrl+Z)">↶</button>
     <button class="btn btn-icon" id="redoBtn" title="Redo (Ctrl+Shift+Z)">↷</button>
   </div>
@@ -790,6 +799,7 @@
   let lastResult = null;
   let activeSdk = 'qiskit';
   let activeRtab = 'visualize';
+  let selectedBackend = 'qiskit-aer';
 
   // ── DOM REFS ──
   const $ = (id) => document.getElementById(id);
@@ -834,15 +844,21 @@
     return headers;
   }
 
-  async function apiFetch(endpoint, options = {}) {
+  async function apiFetch(endpoint, options = {}, _retried = false) {
     const url = API_BASE + endpoint;
     const headers = setAuthHeaders(options.headers || {});
     headers['Content-Type'] = options.contentType || 'application/json';
     const res = await fetch(url, { ...options, headers });
-    
+
     if (res.status === 401) {
+      if (!_retried && refreshToken) {
+        const refreshed = await tryRefreshToken();
+        if (refreshed) return apiFetch(endpoint, options, true);
+      }
       localStorage.removeItem('qcc_token');
+      localStorage.removeItem('qcc_refresh');
       accessToken = null;
+      refreshToken = null;
       currentUser = null;
       showAuth();
       return null;
@@ -877,7 +893,9 @@
     }
     const data = await res.json();
     accessToken = data.access_token;
+    refreshToken = data.refresh_token;
     localStorage.setItem('qcc_token', accessToken);
+    localStorage.setItem('qcc_refresh', refreshToken);
     await loadUser();
     hideAuth();
     renderAllTabs();
@@ -918,7 +936,9 @@
 
   function logout() {
     localStorage.removeItem('qcc_token');
+    localStorage.removeItem('qcc_refresh');
     accessToken = null;
+    refreshToken = null;
     currentUser = null;
     userInfo.textContent = 'Not logged in';
     logoutBtn.style.display = 'none';
@@ -927,6 +947,10 @@
 
   // ── TAB SWITCHING ──
   function switchTab(tabId) {
+    if ((tabId === 'courses' || tabId === 'dashboard') && !currentUser) {
+      showAuth();
+      return;
+    }
     tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
     [tabComposer, tabCourses, tabDashboard].forEach(el => {
       el.classList.toggle('active', el.id === 'tab-' + tabId);
@@ -1488,6 +1512,9 @@
 
   // Run
   $('runBtn').addEventListener('click', runCircuit);
+  $('backendSelect').addEventListener('change', (e) => {
+    selectedBackend = e.target.value;
+  });
 
   async function runCircuit() {
     if (!state.ops.length) { toast('Add at least one gate first.'); return; }
