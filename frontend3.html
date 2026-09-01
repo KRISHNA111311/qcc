@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -117,7 +117,7 @@
   .topbar-right .user-info strong { color: var(--text); }
 
   /* ───────────────────────────────────────
-     TAB BAR
+     TAB BAR (plain text, no emojis)
      ─────────────────────────────────────── */
   .tab-bar {
     display: flex;
@@ -583,11 +583,11 @@
   </div>
 </div>
 
-<!-- ========== TAB BAR ========== -->
+<!-- ========== TAB BAR (plain text) ========== -->
 <div class="tab-bar">
-  <button class="tab-btn active" data-tab="composer">🔬 Composer</button>
-  <button class="tab-btn" data-tab="courses">📚 Courses</button>
-  <button class="tab-btn" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab-btn active" data-tab="composer">Composer</button>
+  <button class="tab-btn" data-tab="courses">Courses</button>
+  <button class="tab-btn" data-tab="dashboard">Dashboard</button>
 </div>
 
 <!-- ========== MAIN CONTENT ========== -->
@@ -786,6 +786,7 @@
   // ── AUTH STATE ──
   let currentUser = null;
   let accessToken = localStorage.getItem('qcc_token') || null;
+  let refreshToken = localStorage.getItem('qcc_refresh') || null;   // <-- FIXED
 
   // ── CIRCUIT BUILDER STATE ──
   let state = { qubitCount: 2, ops: [] };
@@ -842,6 +843,24 @@
   function setAuthHeaders(headers = {}) {
     if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
     return headers;
+  }
+
+  async function tryRefreshToken() {
+    if (!refreshToken) return false;
+    try {
+      const res = await fetch(API_BASE + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      accessToken = data.access_token;
+      refreshToken = data.refresh_token;
+      localStorage.setItem('qcc_token', accessToken);
+      localStorage.setItem('qcc_refresh', refreshToken);
+      return true;
+    } catch { return false; }
   }
 
   async function apiFetch(endpoint, options = {}, _retried = false) {
@@ -1528,7 +1547,7 @@
       const res = await fetch(API_BASE + '/execute', {
         method: 'POST',
         headers: setAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ qasm_d, shots }),
+        body: JSON.stringify({ qasm_d, shots, backend: selectedBackend })
       });
       const data = await res.json();
       if (!data.success) {

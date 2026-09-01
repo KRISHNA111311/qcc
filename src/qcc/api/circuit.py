@@ -278,3 +278,37 @@ async def execute_circuit(request: ParseRequest):
 @router.get("/health")
 async def health():
     return {"status": "ok"}
+# ---------- Analyze Endpoint (Phase 2) ----------
+class AnalyzeRequest(BaseModel):
+    qasm_d: str
+    shots: int = 1024
+    query: str = ""
+
+@router.post("/analyze")
+async def analyze_circuit(request: AnalyzeRequest):
+    try:
+        from ..qasm_d.parser import QASMDParser
+        from ..execution.executor import execute_circuit_async
+        from ..insights.tutor import analyze_circuit
+
+        ast = QASMDParser.parse(request.qasm_d)
+        # Ensure num_qubits
+        if ast.num_qubits == 0:
+            max_q = -1
+            for op in ast.operations:
+                if op.qubits:
+                    max_q = max(max_q, max(op.qubits))
+            if max_q >= 0:
+                ast.num_qubits = max_q + 1
+            else:
+                ast.num_qubits = 1
+
+        # Get statevector for error checks
+        exec_result = await execute_circuit_async(ast, request.shots, "qiskit-aer")
+        statevector = exec_result.get("statevector")
+
+        analysis = analyze_circuit(ast, statevector, request.query)
+        return {"success": True, "data": analysis}
+    except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
