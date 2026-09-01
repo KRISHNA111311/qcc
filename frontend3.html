@@ -839,6 +839,7 @@
     const headers = setAuthHeaders(options.headers || {});
     headers['Content-Type'] = options.contentType || 'application/json';
     const res = await fetch(url, { ...options, headers });
+    
     if (res.status === 401) {
       localStorage.removeItem('qcc_token');
       accessToken = null;
@@ -846,6 +847,13 @@
       showAuth();
       return null;
     }
+    
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`API Error ${res.status}:`, text);
+      throw new Error(`API Error ${res.status}: ${text}`);
+    }
+    
     const text = await res.text();
     try { return JSON.parse(text); } catch { return text; }
   }
@@ -930,129 +938,149 @@
   // ── COURSES ──
   async function renderCourses() {
     if (!currentUser) return;
-    const data = await apiFetch('/content/courses?published_only=false');
-    if (!data) return;
-    const courses = data;
-    let html = '';
-    for (const c of courses) {
-      const enrolled = currentUser.courses_enrolled && currentUser.courses_enrolled.some(e => e.id === c.id);
-      html += `
-        <div class="course-card" data-course-id="${c.id}">
-          <h3>${c.title}</h3>
-          <p>${c.description || ''}</p>
-          <div class="badge">${c.is_published ? 'Published' : 'Draft'} · ${c.modules?.length || 0} modules</div>
-          <div style="margin-top:8px;">
-            ${enrolled ? '<span style="color:#5eead4;">✅ Enrolled</span>' :
-              `<button class="btn btn-primary enroll-btn" data-course-id="${c.id}">Enroll</button>`}
-            <button class="btn view-course-btn" data-course-id="${c.id}">View</button>
-          </div>
-        </div>
-      `;
-    }
-    courseList.innerHTML = html;
-
-    document.querySelectorAll('.enroll-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = parseInt(btn.dataset.courseId);
-        await apiFetch('/content/enroll', { method: 'POST', body: JSON.stringify({ course_id: id }) });
-        await loadUser();
-        renderCourses();
-        renderDashboard();
-      });
-    });
-    document.querySelectorAll('.view-course-btn').forEach(btn => {
-      btn.addEventListener('click', () => viewCourse(parseInt(btn.dataset.courseId)));
-    });
-  }
-
-  async function viewCourse(courseId) {
-    const data = await apiFetch(`/content/courses/${courseId}`);
-    if (!data) return;
-    let html = `<button class="btn" onclick="switchTab('courses'); setTimeout(renderCourses, 50);">← Back to courses</button>
-                <h2>${data.title}</h2><p>${data.description || ''}</p>`;
-    for (const mod of data.modules || []) {
-      html += `<h3 style="margin-top:16px;">${mod.title}</h3>`;
-      for (const lesson of mod.lessons || []) {
-        const completed = currentUser.progress && currentUser.progress.some(p => p.lesson_id === lesson.id && p.completed);
+    try {
+      const data = await apiFetch('/content/courses?published_only=false');
+      if (!data) return;
+      const courses = data;
+      let html = '';
+      for (const c of courses) {
+        const enrolled = currentUser.courses_enrolled && currentUser.courses_enrolled.some(e => e.id === c.id);
         html += `
-          <div style="background:var(--panel-2);border:1px solid var(--border-soft);border-radius:6px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
-            <span>${lesson.title} ${completed ? '✅' : ''}</span>
-            <button class="btn view-lesson-btn" data-lesson-id="${lesson.id}">View</button>
+          <div class="course-card" data-course-id="${c.id}">
+            <h3>${c.title}</h3>
+            <p>${c.description || ''}</p>
+            <div class="badge">${c.is_published ? 'Published' : 'Draft'} · ${c.modules?.length || 0} modules</div>
+            <div style="margin-top:8px;">
+              ${enrolled ? '<span style="color:#5eead4;">✅ Enrolled</span>' :
+                `<button class="btn btn-primary enroll-btn" data-course-id="${c.id}">Enroll</button>`}
+              <button class="btn view-course-btn" data-course-id="${c.id}">View</button>
+            </div>
           </div>
         `;
       }
+      courseList.innerHTML = html;
+
+      document.querySelectorAll('.enroll-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = parseInt(btn.dataset.courseId);
+          await apiFetch('/content/enroll', { method: 'POST', body: JSON.stringify({ course_id: id }) });
+          await loadUser();
+          renderCourses();
+          renderDashboard();
+        });
+      });
+      document.querySelectorAll('.view-course-btn').forEach(btn => {
+        btn.addEventListener('click', () => viewCourse(parseInt(btn.dataset.courseId)));
+      });
+    } catch (err) {
+      console.error('Error loading courses:', err);
+      courseList.innerHTML = `<p style="color:#f2555a;">Error loading courses: ${err.message}</p>`;
     }
-    courseList.innerHTML = html;
-    document.querySelectorAll('.view-lesson-btn').forEach(btn => {
-      btn.addEventListener('click', () => viewLesson(parseInt(btn.dataset.lessonId), courseId));
-    });
+  }
+
+  async function viewCourse(courseId) {
+    try {
+      const data = await apiFetch(`/content/courses/${courseId}`);
+      if (!data) return;
+      let html = `<button class="btn" onclick="switchTab('courses'); setTimeout(renderCourses, 50);">← Back to courses</button>
+                  <h2>${data.title}</h2><p>${data.description || ''}</p>`;
+      for (const mod of data.modules || []) {
+        html += `<h3 style="margin-top:16px;">${mod.title}</h3>`;
+        for (const lesson of mod.lessons || []) {
+          const completed = currentUser.progress && currentUser.progress.some(p => p.lesson_id === lesson.id && p.completed);
+          html += `
+            <div style="background:var(--panel-2);border:1px solid var(--border-soft);border-radius:6px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+              <span>${lesson.title} ${completed ? '✅' : ''}</span>
+              <button class="btn view-lesson-btn" data-lesson-id="${lesson.id}">View</button>
+            </div>
+          `;
+        }
+      }
+      courseList.innerHTML = html;
+      document.querySelectorAll('.view-lesson-btn').forEach(btn => {
+        btn.addEventListener('click', () => viewLesson(parseInt(btn.dataset.lessonId), courseId));
+      });
+    } catch (err) {
+      console.error('Error loading course:', err);
+      courseList.innerHTML = `<p style="color:#f2555a;">Error loading course: ${err.message}</p>`;
+    }
   }
 
   async function viewLesson(lessonId, courseId) {
-    const data = await apiFetch(`/content/courses/${courseId}`);
-    if (!data) return;
-    let lesson = null;
-    for (const mod of data.modules || []) {
-      const found = mod.lessons.find(l => l.id === lessonId);
-      if (found) { lesson = found; break; }
-    }
-    if (!lesson) { alert('Lesson not found'); return; }
-    let html = `<button class="btn" onclick="viewCourse(${courseId})">← Back to course</button>
-                <div class="lesson-view">
-                  <h2>${lesson.title}</h2>
-                  <div class="meta">${lesson.description || ''}</div>`;
-    for (const block of lesson.content_blocks || []) {
-      html += `<div class="content-block">`;
-      html += `<div class="block-type">${block.content_type}</div>`;
-      if (block.content_type === 'text') {
-        html += `<div class="block-text">${block.data.text || ''}</div>`;
-      } else if (block.content_type === 'video') {
-        html += `<div class="block-video"><iframe src="${block.data.url || ''}" allowfullscreen></iframe></div>`;
-      } else if (block.content_type === 'circuit') {
-        html += `<pre style="background:var(--panel-3);padding:10px;border-radius:6px;">${block.data.qasm_d || ''}</pre>`;
-      } else {
-        html += `<pre>${JSON.stringify(block.data, null, 2)}</pre>`;
+    try {
+      const data = await apiFetch(`/content/courses/${courseId}`);
+      if (!data) return;
+      let lesson = null;
+      for (const mod of data.modules || []) {
+        const found = mod.lessons.find(l => l.id === lessonId);
+        if (found) { lesson = found; break; }
       }
-      html += `</div>`;
+      if (!lesson) { alert('Lesson not found'); return; }
+      let html = `<button class="btn" onclick="viewCourse(${courseId})">← Back to course</button>
+                  <div class="lesson-view">
+                    <h2>${lesson.title}</h2>
+                    <div class="meta">${lesson.description || ''}</div>`;
+      for (const block of lesson.content_blocks || []) {
+        html += `<div class="content-block">`;
+        html += `<div class="block-type">${block.content_type}</div>`;
+        if (block.content_type === 'text') {
+          html += `<div class="block-text">${block.data.text || ''}</div>`;
+        } else if (block.content_type === 'video') {
+          html += `<div class="block-video"><iframe src="${block.data.url || ''}" allowfullscreen></iframe></div>`;
+        } else if (block.content_type === 'circuit') {
+          html += `<pre style="background:var(--panel-3);padding:10px;border-radius:6px;">${block.data.qasm_d || ''}</pre>`;
+        } else {
+          html += `<pre>${JSON.stringify(block.data, null, 2)}</pre>`;
+        }
+        html += `</div>`;
+      }
+      const completed = currentUser.progress && currentUser.progress.some(p => p.lesson_id === lesson.id && p.completed);
+      html += `
+        <div class="complete-btn">
+          ${completed ? '✅ Completed' : `<button class="btn btn-primary" id="completeLessonBtn">Mark as Complete</button>`}
+        </div>
+      `;
+      html += '</div>';
+      courseList.innerHTML = html;
+      document.getElementById('completeLessonBtn')?.addEventListener('click', async () => {
+        await apiFetch(`/progress/lesson/${lesson.id}/complete`, { method: 'POST' });
+        await loadUser();
+        viewLesson(lesson.id, courseId);
+        renderDashboard();
+      });
+    } catch (err) {
+      console.error('Error loading lesson:', err);
+      courseList.innerHTML = `<p style="color:#f2555a;">Error loading lesson: ${err.message}</p>`;
     }
-    const completed = currentUser.progress && currentUser.progress.some(p => p.lesson_id === lesson.id && p.completed);
-    html += `
-      <div class="complete-btn">
-        ${completed ? '✅ Completed' : `<button class="btn btn-primary" id="completeLessonBtn">Mark as Complete</button>`}
-      </div>
-    `;
-    html += '</div>';
-    courseList.innerHTML = html;
-    document.getElementById('completeLessonBtn')?.addEventListener('click', async () => {
-      await apiFetch(`/progress/lesson/${lesson.id}/complete`, { method: 'POST' });
-      await loadUser();
-      viewLesson(lesson.id, courseId);
-      renderDashboard();
-    });
   }
 
   // ── DASHBOARD ──
   async function renderDashboard() {
     if (!currentUser) return;
-    const data = await apiFetch('/progress/dashboard');
-    if (!data) return;
-    let html = '';
-    if (!data.length) html += '<p>You are not enrolled in any courses yet.</p>';
-    for (const item of data) {
-      html += `
-        <div class="dashboard-item">
-          <div class="info">
-            <strong>${item.course_title}</strong>
-            <div style="font-size:13px;color:var(--text-muted);">${item.completed_lessons}/${item.total_lessons} lessons</div>
+    try {
+      const data = await apiFetch('/progress/dashboard');
+      if (!data) return;
+      let html = '';
+      if (!data.length) html += '<p>You are not enrolled in any courses yet.</p>';
+      for (const item of data) {
+        html += `
+          <div class="dashboard-item">
+            <div class="info">
+              <strong>${item.course_title}</strong>
+              <div style="font-size:13px;color:var(--text-muted);">${item.completed_lessons}/${item.total_lessons} lessons</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div class="progress-bar"><div class="fill" style="width:${item.progress_percentage}%;"></div></div>
+              <span class="progress-text">${item.progress_percentage}%</span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div class="progress-bar"><div class="fill" style="width:${item.progress_percentage}%;"></div></div>
-            <span class="progress-text">${item.progress_percentage}%</span>
-          </div>
-        </div>
-      `;
+        `;
+      }
+      dashboardList.innerHTML = html;
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+      dashboardList.innerHTML = `<p style="color:#f2555a;">Error loading dashboard: ${err.message}</p>`;
     }
-    dashboardList.innerHTML = html;
   }
 
   function renderAllTabs() {

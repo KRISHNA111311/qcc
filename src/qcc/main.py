@@ -1,5 +1,8 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from .api import circuit_router
 from .api.auth import router as auth_router
 from .api.content import router as content_router
@@ -28,6 +31,14 @@ app.include_router(circuit_router)
 app.include_router(auth_router)
 app.include_router(content_router)
 app.include_router(progress_router)
+
+# Serve frontend3.html
+@app.get("/")
+async def root():
+    frontend_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend3.html")
+    if os.path.exists(frontend_path):
+        return FileResponse(frontend_path)
+    return {"message": "QCC API is running - frontend3.html not found"}
 
 @app.get("/")
 async def root():
