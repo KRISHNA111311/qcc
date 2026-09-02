@@ -1,6 +1,10 @@
 ﻿import os
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 from typing import List, Optional
+
+# Force .env to be loaded into os.environ
+load_dotenv()
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./qcc.db"
@@ -11,7 +15,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
     
-    # Gemini keys – each optional, loaded from environment
+    # Gemini keys – will be populated from .env
     gemini_api_key1: Optional[str] = None
     gemini_api_key2: Optional[str] = None
     gemini_api_key3: Optional[str] = None
@@ -30,11 +34,16 @@ class Settings(BaseSettings):
             key = getattr(self, f"gemini_api_key{i}")
             if key:
                 keys.append(key)
-        # fallback to single GEMINI_API_KEY if present (read directly from os)
+        # Also try fallback to GEMINI_API_KEY (if present)
         if not keys:
-            single = os.getenv("GEMINI_API_KEY")
-            if single:
-                keys.append(single)
+            fallback = os.getenv("GEMINI_API_KEY")
+            if fallback:
+                keys.append(fallback)
+        # Log which keys were found
+        if keys:
+            print(f"[CONFIG] Loaded {len(keys)} Gemini API key(s): {[k[:8]+'...' for k in keys]}")
+        else:
+            print("[CONFIG] WARNING: No Gemini API keys found!")
         return keys
 
 settings = Settings()
